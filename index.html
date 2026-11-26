@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="冥通">
+<meta name="theme-color" content="#120b0a">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<script>
+/* offline play: only where a service worker is allowed (https, or localhost while testing) */
+try { if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); } catch (e) {}
+</script>
+<title>冥通 Hell Money — Scene 1 prototype</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}      /* no grey flash over the tapped area on phones */
+html{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;-webkit-text-size-adjust:100%}   /* no text selection or long-press menu */
+img{-webkit-user-drag:none}
+button{touch-action:manipulation}
+button:focus:not(:focus-visible){outline:none}
+:root{color-scheme:dark}
+html,body{margin:0;height:100%;background:#120b0a;overflow:hidden;position:relative;font-family:'Noto Sans TC',system-ui,sans-serif;color:#f3ead7}
+#fit{position:absolute;inset:0;overflow:hidden}
+#stage{position:absolute;left:0;top:0;width:1672px;height:941px;transform-origin:0 0;overflow:hidden;background:#1a0f0d;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+#world{position:absolute;left:0;top:0;width:1672px;height:941px;z-index:0}
+#world.shake{animation:shake .32s linear}
+@keyframes shake{0%,100%{transform:none}20%{transform:translate(0,7px)}45%{transform:translate(-3px,-4px)}70%{transform:translate(3px,3px)}}
+#bg,.bgimg{position:absolute;left:0;top:0;width:1672px;height:941px;display:block}
+.room{position:absolute;inset:0;display:none}
+.room.on{display:block}
+#fade{position:absolute;inset:0;z-index:9;background:#0b0605;opacity:0;pointer-events:none;transition:opacity .24s}
+#fade.on{opacity:1}
+/* doors between rooms */
+.hot.exit{z-index:3}                                    /* door plaques hang in front of Ah Fook */
+.hot.exit i{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;font-style:normal;width:262px;height:137px;padding:37px 24px 49px;background:url(assets/ui_plaque.webp) center/100% 100% no-repeat;color:#ffd98a;font-family:'Noto Serif TC',serif;font-weight:700;font-size:21px;line-height:1.15;white-space:nowrap;animation:doorglow 2s ease-in-out infinite}
+.hot.exit i small{display:block;font-family:'Noto Sans TC',sans-serif;font-weight:500;font-size:11px;color:#e3c98f;letter-spacing:1px;line-height:1.1}
+@keyframes doorglow{0%,100%{filter:drop-shadow(0 0 4px rgba(255,207,90,.3))}50%{filter:drop-shadow(0 0 13px rgba(255,207,90,.95))}}
+body.busy .hot.exit i{opacity:.35;animation:none}
+#board .n.flip{animation:flip .7s ease-in-out}
+@keyframes flip{0%{transform:scaleY(1)}45%{transform:scaleY(0)}55%{transform:scaleY(0)}100%{transform:scaleY(1)}}
+#gone17{visibility:hidden;position:absolute;left:1236px;top:366px;width:112px;height:82px;display:none;pointer-events:none;background:radial-gradient(ellipse at 50% 100%,#5a4034,#3a2620 75%);box-shadow:inset 0 -6px 0 #6b4d3c}
+#rates{position:absolute;display:flex;flex-direction:column;justify-content:center;gap:6px;padding:10px 18px;pointer-events:none;color:#ffc46b;font-family:'Noto Serif TC',serif;font-weight:700;text-shadow:0 0 8px rgba(255,170,60,.6)}
+#rates h4{margin:0 0 4px;font-size:21px;letter-spacing:4px;text-align:center}
+#rates h4 small{display:block;font:700 11px 'Noto Sans TC',sans-serif;letter-spacing:3px}
+#rates p{margin:0;font-size:17px;display:flex;justify-content:space-between;gap:14px}
+#rates p b{color:#ff5a4d;font-family:'Courier New',monospace}
+#board{position:absolute;left:712px;top:246px;width:232px;height:180px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:14px 0 16px;pointer-events:none}
+#board .t{font-family:'Noto Serif TC',serif;font-weight:700;font-size:22px;letter-spacing:4px;color:#ffc46b;text-shadow:0 0 8px rgba(255,170,60,.7)}
+#board .t small{display:block;font-family:'Noto Sans TC',sans-serif;font-size:11px;letter-spacing:3px;text-align:center;margin-top:2px}
+#board .n{font-family:'Courier New',monospace;font-weight:700;font-size:40px;letter-spacing:6px;color:#ff5a4d;text-shadow:0 0 10px rgba(255,70,50,.8)}
+/* the form on the counter and the seal the stamp leaves */
+#cform{position:absolute;left:1240px;top:566px;width:104px;height:30px;background:#f3ead7;border:1px solid #b9a98c;transform:skewX(-24deg);box-shadow:0 2px 3px rgba(0,0,0,.35);display:none;pointer-events:none}
+#cform::before{content:'';position:absolute;left:46px;width:46px;top:8px;height:2px;background:#8d7d68;box-shadow:0 6px 0 #8d7d68,0 12px 0 #8d7d68}
+#seal{position:absolute;left:4px;top:3px;width:24px;height:24px;border:3px solid #c8102e;border-radius:4px;color:#c8102e;font-family:'Noto Serif TC',serif;font-weight:900;font-size:15px;line-height:17px;text-align:center;opacity:0;transform:scale(2.2)}
+#seal.on{opacity:1;transform:scale(1);transition:opacity .12s,transform .18s}
+
+/* the other souls and clerks: separate paper pieces that blink, talk and breathe */
+.npc{position:absolute;overflow:hidden;pointer-events:none}
+.npc .nb{position:absolute;left:0;top:0;will-change:transform}
+.npc img{position:absolute;display:block;max-width:none}
+.npc .nh{position:absolute}
+.npc .nh img{left:0;top:0;width:100%;height:100%;visibility:hidden}
+.npc .nh img.on{visibility:visible}
+.na.slam{animation:oxslam 3s linear}               /* Ox-Head lifts the stamp, slowly, and brings it down */
+@keyframes oxslam{0%{transform:rotate(0)}10%{transform:rotate(-3deg)}52%{transform:rotate(-27deg)}56.5%{transform:rotate(-27deg)}58.6%{transform:rotate(2.5deg)}63%{transform:rotate(0)}100%{transform:rotate(0)}}
+/* the chairs again, on top, so Uncle Kwai stands behind them */
+#chairs{position:absolute;left:0;top:0;width:1672px;height:941px;display:block;max-width:none;pointer-events:none;clip-path:polygon(0 563px,30px 559px,92px 557px,101px 566px,104px 590px,108px 565px,118px 551px,185px 549px,196px 560px,200px 760px,0 760px)}
+/* room props that come and go, and the lettering on the signs */
+.rp{position:absolute;display:block;max-width:none;pointer-events:none}
+#flame img{position:absolute;left:0;top:0;width:100%;display:block;visibility:hidden}
+#flame img:nth-child(2){visibility:visible}
+.sign{position:absolute;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;font-family:'Noto Serif TC',serif;color:#f3cd66;text-shadow:0 2px 0 #5a2410,0 0 12px rgba(40,10,0,.45)}
+.sign b{font-weight:900;font-size:60px;letter-spacing:16px;padding-left:16px;line-height:1}
+.sign small{font:700 15px 'Noto Sans TC',sans-serif;letter-spacing:7px;padding-left:7px;margin-top:8px;color:#ecd08a}
+.sign.sm b{font-size:28px;letter-spacing:7px;padding-left:7px}
+.v-img{display:block;max-width:none;filter:drop-shadow(0 14px 28px rgba(0,0,0,.6))}
+
+#shadow{position:absolute;left:0;top:0;width:200px;height:34px;border-radius:50%;background:rgba(20,8,6,.42);filter:blur(6px);pointer-events:none}
+#rig{position:absolute;left:0;top:0;pointer-events:none;will-change:transform}
+#rig div{position:absolute;left:0;top:0}
+#rig img{position:absolute;display:block}
+
+/* things Ah Fook holds, and things that fly between hands */
+.p-pen,.p-coin,.p-paper,.p-phone,.p-parcel,.p-ingot{background:center/contain no-repeat}
+.p-pen{width:104px;height:70px;background-image:url(assets/hp_pen.webp)}
+.p-coin{width:56px;height:56px;background-image:url(assets/hp_coin.webp);filter:drop-shadow(0 0 8px rgba(255,207,90,.85))}
+
+.p-paper{width:78px;height:100px;background-image:url(assets/hp_form.webp)}
+.p-phone{width:48px;height:90px;background-image:url(assets/hp_phone.webp)}
+.p-ink{width:14px;height:14px;border-radius:50% 50% 50% 0;background:#c8102e}
+.p-parcel{width:92px;height:68px;background-image:url(assets/hp_parcel.webp)}
+.p-ingot{width:92px;height:60px;background-image:url(assets/hp_ingot.webp)}
+#rig .prop{display:none}
+#rig .prop.p-pen{transform:translate(-50%,-60%) rotate(-48deg)}
+#rig .prop.p-coin{transform:translate(-50%,-5%)}
+#rig .prop.p-paper{transform:translate(-50%,-50%) rotate(62deg)}
+#rig .prop.p-phone{transform:translate(-50%,-40%) rotate(66deg)}
+.fly{position:absolute;left:0;top:0;pointer-events:none}
+
+.hot{position:absolute;border:0;background:transparent;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.hot span{display:block;width:48px;height:48px;background:url(assets/ui_ring.webp) center/contain no-repeat;animation:pulse 1.8s ease-in-out infinite}
+.hot:focus-visible{outline:4px solid #ffe9a8;outline-offset:4px}
+@keyframes pulse{0%,100%{transform:scale(.8);opacity:.75}50%{transform:scale(1.15);opacity:1}}
+body.busy .hot span{opacity:.0;animation:none}
+body.holding .hot span{filter:hue-rotate(-32deg) saturate(2.2) brightness(1.05)}
+
+#tray{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:center;gap:16px}
+/* the painted tray: a slim strip of eight slots that stays below Ah Fook's feet. Each item's button sits on a slot */
+#inv{position:relative;flex:none;width:796px;height:108px;background:url(assets/ui_tray.webp) center/100% 100% no-repeat;border-radius:4px;box-shadow:0 0 0 2px #2a1512,0 6px 12px rgba(0,0,0,.5)}
+#inv button{position:absolute;top:0;width:12.21%;height:100%;padding:0;border:0;background:none;cursor:pointer}   /* a little wider than the slot, so it is easy to tap on a phone */
+
+#inv button.new .ico{animation:pop .6s ease-out}
+#inv button.sel .ico{background:rgba(255,224,138,.22) url(assets/ui_slot.webp) center/100% 100% no-repeat;box-shadow:0 0 0 3px #e01735,0 0 22px #ffcf5a;transform:translateY(-8px)}
+@keyframes pop{0%{transform:scale(.4)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+.ico{position:absolute;left:3.2%;top:7.9%;width:93.6%;height:84.2%;display:flex;align-items:center;justify-content:center;border-radius:4px;pointer-events:none;transition:transform .12s}
+.ico img{display:block;max-width:80%;max-height:80%;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.ico .p-pen{transform:scale(.56) rotate(42deg)}
+.ico .p-coin{transform:scale(.88)}
+.ico .p-paper{transform:scale(.56) rotate(-5deg)}
+.ico .p-phone{transform:scale(.66) rotate(8deg)}
+.ico .p-ticket{transform:scale(.7) rotate(-6deg)}
+.ico .p-parcel{transform:scale(.8)}
+.ico .p-ingot{transform:scale(.85)}
+.p-t18::after{content:'0000018'}
+.p-ticket{width:112px;height:66px;background:#f3ead7;border:2px dashed #b23a2a;border-radius:3px}
+.p-ticket::after{content:'4,444,444';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 19px 'Courier New',monospace;color:#b23a2a}
+.p-stamped::after{content:'准';position:absolute;right:8px;bottom:10px;width:36px;height:36px;border:4px solid #e01735;border-radius:5px;color:#e01735;background:#f3ead7;font:900 24px/28px 'Noto Serif TC',serif;text-align:center}
+#hint{width:116px;height:116px;border:0;padding:0;background:url(assets/ui_hint.webp) center/contain no-repeat;color:transparent;font-size:0;cursor:pointer;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5))}
+#hint svg,#hint small{display:none}
+
+body.busy #hint{opacity:.5}
+
+/* the dialogue strip: painted frame with a name tab. It sits over the item tray, since it is only up while someone speaks */
+#dlg{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);width:1300px;height:288px;padding:100px 100px 0;text-align:center;background:url(assets/ui_dlg.webp) center/100% 100% no-repeat;filter:drop-shadow(0 8px 14px rgba(0,0,0,.55));display:none;cursor:pointer}
+
+
+#dlg .who{position:absolute;left:36.5%;width:27%;top:17px;height:46px;line-height:46px;font-weight:700;font-size:18px;letter-spacing:4px;color:#ffc46b;white-space:nowrap}
+#dlg .zh{font-family:'Noto Serif TC',serif;font-weight:700;font-size:32px;line-height:1.35}
+#dlg .en{font-size:22px;line-height:1.35;color:#e3d6c6;margin-top:3px}
+#dlg .more{position:absolute;right:100px;bottom:36px;font-size:15px;color:#ffc46b;letter-spacing:2px}
+/* the pop-up that shows an item up close */
+#pop{position:absolute;inset:0;background:rgba(10,5,4,.76);display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;cursor:pointer}
+#pop .view{cursor:default;animation:popin .28s ease-out;flex:none}
+@keyframes popin{0%{transform:scale(.55) rotate(-5deg);opacity:0}100%{opacity:1}}
+#pop .cap{max-width:1150px;text-align:center;cursor:default}
+#pop .cap .zh{font-family:'Noto Serif TC',serif;font-weight:700;font-size:29px;line-height:1.3}
+#pop .cap .en{font-size:20px;color:#e3d6c6;margin-top:2px}
+#pop .btns{display:flex;gap:18px}
+#pop .btns button{min-width:240px;height:80px;border-radius:10px;border:3px solid #c9a24b;background:linear-gradient(#4c221c,#2c1310);color:#ffd98a;font-family:'Noto Serif TC',serif;font-weight:700;font-size:27px;cursor:pointer;box-shadow:0 0 0 2px #2a1512,0 6px 14px rgba(0,0,0,.5)}
+#pop .btns button small{font-family:'Noto Sans TC',sans-serif;font-weight:500;font-size:17px;color:#e3c98f;margin-left:10px}
+#pop .btns .use{background:linear-gradient(#f6d98a,#d9a02e);color:#2a1512;border-color:#fff1b8}
+#pop .btns .use small{color:#4a2a12}
+
+.v-form{width:640px;padding:22px 34px 20px;background:linear-gradient(#f6eedd,#ead9b8);color:#2a1512;border:2px solid #b9a98c;box-shadow:0 14px 40px rgba(0,0,0,.6);font-family:'Noto Serif TC',serif;rotate:-1.2deg}
+.v-form h3{margin:0 0 4px;text-align:center;font-size:28px;letter-spacing:8px;color:#8a1c14;border-bottom:4px double #8a1c14;padding-bottom:6px}
+.v-form h3 small{display:block;font:700 13px 'Noto Sans TC',sans-serif;letter-spacing:3px;color:#5a4a44}
+.v-form .row{display:flex;align-items:center;gap:14px;padding:7px 0;border-bottom:1px solid #b9a98c;min-height:56px}
+.v-form .row b{flex:none;width:34px;height:34px;border:2px solid #2a1512;border-radius:50%;text-align:center;font-size:17px;line-height:30px}
+.v-form .k{flex:none;width:170px;font-weight:700;font-size:21px;line-height:1.1}
+.v-form .k small,.v-form .v small{display:block;font:500 13px 'Noto Sans TC',sans-serif;color:#5a4a44}
+.v-form .v{flex:1;font-weight:700;font-size:22px;line-height:1.1}
+.v-form .blank{align-self:stretch;border-bottom:3px dashed #d0122c;display:flex;align-items:flex-end;justify-content:flex-end;font:700 13px 'Noto Sans TC',sans-serif;color:#d0122c;letter-spacing:2px;padding-bottom:2px}
+.v-form .ink{color:#d0122c;font-style:italic;font-size:27px;rotate:-2deg}
+.v-form .ink small{color:#d0122c}
+.v-form .thumb{flex:none;width:42px;height:54px;border-radius:50%;background:repeating-radial-gradient(circle at 50% 62%,#d0122c 0 2px,transparent 2px 5px);opacity:.85;rotate:14deg}
+.v-form .office{text-align:center;font:500 14px 'Noto Sans TC',sans-serif;color:#5a4a44;padding:7px 0;border-bottom:1px solid #b9a98c;line-height:1.35}
+.v-form .box{flex:none;width:92px;height:92px;border:2px dashed #8a1c14;display:flex;flex-direction:column;align-items:center;justify-content:center;font:700 14px 'Noto Sans TC',sans-serif;color:#8a1c14;text-align:center;line-height:1.3}
+.v-form .box.done{border:6px solid #d0122c;border-radius:10px;color:#d0122c;font:900 58px/1 'Noto Serif TC',serif;rotate:-9deg}
+.v-ticket{width:780px;height:356px;padding:46px 100px 0;background:url(assets/cu_ticket.webp) center/100% 100% no-repeat;color:#9b2d20;text-align:center;font-family:'Noto Serif TC',serif;filter:drop-shadow(0 14px 26px rgba(0,0,0,.6));rotate:-2deg}
+.v-ticket.old{background-image:url(assets/cu_t18.webp)}
+.v-ticket h3{margin:0;font-size:25px;letter-spacing:8px}
+.v-ticket h3 small,.v-ticket p small{display:block;font:700 12px 'Noto Sans TC',sans-serif;letter-spacing:3px}
+.v-ticket .num{font:700 68px 'Courier New',monospace;letter-spacing:2px;margin:2px 0 0;line-height:1.1}
+.v-ticket p{margin:2px 0 0;font-size:18px;font-weight:700}
+.v-ticket .fine{font:500 11.5px 'Noto Sans TC',sans-serif;color:#5a4a44;margin-top:6px;border-top:1px dashed #b23a2a;padding-top:5px;line-height:1.3}
+.v-phone{width:306px;height:619px;background:url(assets/cu_phone.webp) center/100% 100% no-repeat;padding:30px 22px 34px;filter:drop-shadow(0 14px 26px rgba(0,0,0,.6));rotate:3deg}
+.v-phone .scr{position:relative;height:100%;border-radius:14px;background:linear-gradient(rgba(43,71,99,.82),rgba(14,22,32,.55));color:#eaf4ff;text-align:center;padding:30px 14px;overflow:hidden;font-family:'Noto Sans TC',sans-serif}
+.v-phone .sig{font-size:14px;letter-spacing:1px;color:#ffb0a8}
+.v-phone .time{font-size:92px;font-weight:400;line-height:1.1;margin-top:26px}
+.v-phone .day{font-size:17px;color:#b9cde0}
+.v-phone .note{margin-top:46px;background:rgba(255,255,255,.16);border-radius:14px;padding:12px 14px;text-align:left;font-size:17px;line-height:1.35}
+.v-phone .note b{display:block;font-size:13px;letter-spacing:1px;color:#b9cde0}
+
+.v-parcel{width:540px;height:389px;position:relative;background:url(assets/cu_parcel.webp) center/contain no-repeat;filter:drop-shadow(0 14px 26px rgba(0,0,0,.6));rotate:-3deg}
+.v-parcel .tag{position:absolute;right:-110px;top:10px;width:230px;padding:12px 14px;background:#f6eedd;border:2px solid #b9a98c;color:#2a1512;font-family:'Noto Serif TC',serif;font-weight:700;font-size:22px;line-height:1.3;rotate:9deg;box-shadow:0 6px 14px rgba(0,0,0,.5)}
+.v-parcel .tag small{display:block;font:500 14px 'Noto Sans TC',sans-serif;color:#5a4a44}
+.v-ingot{width:330px;height:170px;border:8px solid #8a5d12;border-radius:50% 50% 50px 50px / 78% 78% 22% 22%;background:radial-gradient(ellipse at 50% 12%,#fff6cf,#e2ac36 60%,#a87418);box-shadow:0 14px 40px rgba(0,0,0,.6),0 0 40px rgba(255,207,90,.5)}
+.v-ledger{width:860px}
+.v-ledger .lrow{display:flex;width:100%;align-items:center;gap:14px;padding:8px 6px;border:0;border-bottom:1px solid #b9a98c;background:transparent;color:#2a1512;text-align:left;font-family:'Noto Serif TC',serif;cursor:pointer;min-height:64px}
+.v-ledger .lrow:hover,.v-ledger .lrow:focus-visible{background:rgba(208,18,44,.12);outline:none}
+.v-ledger .lrow b{flex:none;width:200px;font-size:20px;white-space:nowrap}
+.v-ledger .lrow span{flex:1;font-weight:700;font-size:20px;line-height:1.2}
+.v-ledger .lrow small{display:block;font:500 14px 'Noto Sans TC',sans-serif;color:#5a4a44}
+.v-pen{width:520px;height:230px;display:flex;align-items:center;justify-content:center}
+.v-pen i{display:block;width:46px;height:470px;border-radius:14px;background:linear-gradient(90deg,rgba(255,255,255,.28),transparent 40%,rgba(0,0,0,.25)),linear-gradient(#e01735 0 70%,#f3ead7 70% 80%,#2a1512 80%);box-shadow:0 14px 30px rgba(0,0,0,.6);rotate:72deg}
+.v-coin{width:260px;height:260px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff1b8,#d9a02e 65%,#a87418);border:10px solid #8a5d12;box-shadow:0 14px 40px rgba(0,0,0,.6),inset 0 0 0 10px rgba(138,93,18,.5);display:flex;align-items:center;justify-content:center;gap:16px;font:900 54px 'Noto Serif TC',serif;color:#6a440c}
+.v-coin i{display:block;width:64px;height:64px;background:#2a1512;box-shadow:inset 0 0 0 5px #8a5d12}
+
+.cover{position:absolute;inset:0;background:#0b0605;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:60px 160px;cursor:pointer;transition:opacity .8s}
+.cover .zh{font-family:'Noto Serif TC',serif;font-weight:700;font-size:46px;line-height:1.4}
+.cover .en{font-size:28px;color:#d9cfc4;margin-top:14px;line-height:1.4}
+.cover .tap{position:absolute;bottom:60px;font-size:22px;letter-spacing:3px;color:#ffc46b}
+/* the story cards are a sheet of paper, so their writing is dark */
+#intro,#end{background:#2a1512 url(assets/ui_card.jpg) center/cover;padding:150px 290px}
+#intro .zh,#end .zh{color:#3a1a12}
+#intro .en,#end .en{color:#5c3b2b}
+#intro .tap{bottom:132px;color:#8a1c14}
+#end h1{color:#8a1c14;font-size:104px}
+#end h2{color:#7a4a30}
+#end button{border-color:#8a1c14;color:#8a1c14}
+#title{background:#1a0d0b url(assets/ui_title.jpg) center/cover;z-index:2}
+#title h1{font-size:150px;letter-spacing:30px;padding-left:30px;text-shadow:0 4px 0 #5a2410,0 0 30px rgba(0,0,0,.6)}
+#title h2{color:#f0d9a0;letter-spacing:16px;padding-left:16px;margin-bottom:0;text-shadow:0 2px 8px rgba(0,0,0,.7)}
+#title .tap{bottom:150px;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+.cover h1{font-family:'Noto Serif TC',serif;font-weight:900;font-size:120px;letter-spacing:16px;margin:0;color:#f6d98a}
+.cover h2{font-weight:500;font-size:34px;letter-spacing:10px;margin:8px 0 40px;color:#e8b9a0}
+.cover button{min-height:88px;padding:0 50px;border:2px solid #f3ead7;border-radius:6px;background:transparent;color:#f3ead7;font-size:28px;letter-spacing:3px;cursor:pointer;font-family:inherit}
+#tip{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 26px;background:rgba(18,9,8,.9);border:1px solid #c9a24b;border-radius:40px;font-size:21px;display:none;pointer-events:none;white-space:nowrap}
+#rotate{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-size:14px;color:#d9cfc4;display:none;padding:0 20px}
+@media (orientation:portrait){#rotate{display:block}}
+@media (prefers-reduced-motion:reduce){.hot span,.na.slam,#world.shake{animation:none}}
+</style>
+</head>
+<body>
+<div id="fit">
+<div id="stage">
+  <div id="world">
+    <div class="room on" data-room="hall">
+      <img id="bg" src="assets/hall.jpg" alt="The underworld arrivals hall: a queue of souls, a ticket machine, a now-serving board and a glass registration counter">
+      <img id="chairs" src="assets/hall.jpg" alt="">
+      <div id="board" aria-hidden="true"><div class="t">現正服務<small>NOW SERVING</small></div><div class="n">0000017</div></div>
+      <div id="cform" aria-hidden="true"><div id="seal">准</div></div>
+      <img id="inkpad" class="rp" src="assets/p_inkdry.webp" alt="" style="left:1362px;top:556px;width:56px">
+      <button class="hot" data-id="kwai" style="left:6px;top:340px;width:120px;height:270px" aria-label="Uncle Kwai, the old man in the queue"><span></span></button>
+      <button class="hot" data-id="machine" style="left:525px;top:400px;width:165px;height:290px" aria-label="The ticket machine"><span></span></button>
+      <button class="hot" data-id="board" style="left:712px;top:240px;width:232px;height:150px" aria-label="The now-serving board"><span></span></button>
+      <button class="hot" data-id="ox" style="left:1215px;top:300px;width:260px;height:270px" aria-label="Ox-Head at the counter"><span></span></button>
+      <button class="hot" data-id="sign" style="left:1432px;top:262px;width:104px;height:205px" aria-label="The procedure notice"><span></span></button>
+      <button class="hot exit" data-id="toDepot" style="left:22px;top:806px;width:230px;height:86px" aria-label="Door to Offerings Collection"><i>← 收件處<small>OFFERINGS COLLECTION</small></i></button>
+      <button class="hot exit" data-id="toBank" style="left:1426px;top:806px;width:206px;height:86px" aria-label="Door to the Hell Bank"><i>冥通銀行 →<small>HELL BANK</small></i></button>
+    </div>
+    <div class="room" data-room="bank">
+      <img class="bgimg" src="assets/bank.jpg" alt="The Hell Bank lobby: a teller counter in front of the vault, a chained ledger cabinet and a rates board">
+      <div class="sign" aria-hidden="true" style="left:610px;top:20px;width:440px;height:116px"><b>冥通銀行</b><small>HELL BANK</small></div>
+      <img id="cage" class="rp" src="assets/p_cage.webp" alt="" style="left:1150px;top:204px;width:400px">
+      <img id="chain" class="rp" src="assets/p_chain.webp" alt="" style="left:231px;top:330px;width:262px">
+      <img id="cabopen" class="rp" src="assets/p_cabinet_open.webp" alt="" style="left:212px;top:138px;width:300px;display:none">
+      <div class="sign sm" aria-hidden="true" style="left:290px;top:172px;width:166px;height:44px"><b>靜止戶口</b></div>
+      <img id="suitcases" class="rp" src="assets/p_suitcases.webp" alt="" style="left:1400px;top:372px;width:250px;display:none">
+      <div id="rates" aria-hidden="true" style="left:604px;top:226px;width:350px;height:204px"><h4>今日牌價<small>TODAY'S RATES</small></h4><p>金元寶 一隻 INGOT ×1 <b>= 銅錢 1</b></p><p>冥鈔 一億 NOTES ×100M <b>= 銅錢 1</b></p></div>
+      <button class="hot" data-id="ma" style="left:1195px;top:180px;width:200px;height:290px" aria-label="Horse-Face, the bank teller"><span></span></button>
+      <button class="hot" data-id="ledger" style="left:240px;top:225px;width:255px;height:380px" aria-label="The dormant accounts cabinet"><span></span></button>
+      <button class="hot" data-id="rates" style="left:590px;top:330px;width:380px;height:150px" aria-label="The rates board"><span></span></button>
+      <button class="hot" data-id="vault" style="left:1450px;top:250px;width:170px;height:220px" aria-label="The vault"><span></span></button>
+      <button class="hot exit" data-id="bankExit" style="left:30px;top:626px;width:210px;height:86px" aria-label="Door back to the arrivals hall"><i>← 報到大廳<small>ARRIVALS HALL</small></i></button>
+    </div>
+    <div class="room" data-room="depot">
+      <img class="bgimg" src="assets/depot.jpg" alt="Offerings Collection: a glowing furnace chute, a counter, and dusty shelves of unclaimed paper offerings">
+      <div class="sign" aria-hidden="true" style="left:540px;top:26px;width:550px;height:110px"><b>焚化收件處</b><small>OFFERINGS COLLECTION</small></div>
+      <div class="sign sm" aria-hidden="true" style="left:1150px;top:130px;width:226px;height:56px"><b>無人認領</b></div>
+      <div id="flame" class="rp" aria-hidden="true" style="left:280px;top:364px;width:92px;height:100px"><img src="assets/p_flame0.webp" alt=""><img src="assets/p_flame1.webp" alt=""><img src="assets/p_flame2.webp" alt=""><img src="assets/p_flame3.webp" alt=""></div>
+      <img class="rp conv" src="assets/p_conv0.webp" alt="" style="width:70px;opacity:0"><img class="rp conv" src="assets/p_conv2.webp" alt="" style="width:70px;opacity:0">
+      <img id="slip" class="rp" src="assets/p_slip.webp" alt="" style="left:66px;top:712px;width:88px;display:none">
+      <img id="parcel17" class="rp" src="assets/p_parcel17.webp" alt="" style="left:1234px;top:352px;width:104px">
+      <img id="pile" class="rp" src="assets/p_pile.webp" alt="" style="left:-8px;top:520px;width:230px">
+      <button class="hot" data-id="yuk" style="left:650px;top:205px;width:170px;height:255px" aria-label="Ah Yuk, the paper maid"><span></span></button>
+      <button class="hot" data-id="chute" style="left:215px;top:310px;width:230px;height:210px" aria-label="The furnace chute"><span></span></button>
+      <div id="gone17" aria-hidden="true"></div>
+      <button class="hot" data-id="shelf" style="left:1010px;top:205px;width:450px;height:400px" aria-label="The unclaimed shelf"><span></span></button>
+      <button class="hot exit" data-id="depotExit" style="left:1425px;top:650px;width:210px;height:86px" aria-label="Door back to the arrivals hall"><i>報到大廳 →<small>ARRIVALS HALL</small></i></button>
+    </div>
+    <div id="shadow"></div>
+    <div id="rig" role="img" aria-label="Ah Fook"></div>
+    <div id="fade"></div>
+  </div>
+
+  <div id="tip"></div>
+  <div id="tray">
+    <div id="inv" aria-label="Inventory"></div>
+    <button id="hint" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2.2h5c.1-1 .5-1.700 1.100-2.200A6 6 0 0 0 12 3z"/></svg>提示<small>HINT</small></button>
+  </div>
+  <div id="dlg" role="status" aria-live="polite"><div class="who"></div><div class="zh"></div><div class="en"></div><div class="more">輕觸繼續 · TAP</div></div>
+
+  <div id="pop" role="dialog" aria-modal="true" aria-label="Item">
+    <div class="view"></div>
+    <div class="cap"><div class="zh"></div><div class="en"></div></div>
+    <div class="btns"><button type="button" class="use">使用<small>Use</small></button><button type="button" class="shut">收埋<small>Put away</small></button></div>
+  </div>
+
+  <div class="cover" id="intro"><div class="zh"></div><div class="en"></div><div class="tap">輕觸繼續 · TAP TO CONTINUE</div></div>
+  <div class="cover" id="end" style="display:none;cursor:default"><h1>第一場完</h1><h2>END OF SCENE 1</h2><div class="en" style="margin:0 0 50px">下一場：發達 · Next: being rich</div><button id="replay" type="button">再玩一次 · Play again</button></div>
+  <div class="cover" id="title"><h1>冥通</h1><h2>HELL MONEY</h2><div class="tap" id="titletap">載入中 · LOADING</div></div>
+</div>
+<div id="rotate"><img src="assets/ui_rotate.webp" alt="" style="display:block;width:150px;margin:0 auto 8px">Turn your phone sideways for a bigger view.</div>
+</div>
+
+<script>
+const RIG = {"scale":0.6,"w":614,"h":922,"feet":[258,917],"parts":{"head":{"x":254.4,"y":0.0,"w":164,"h":170,"px":300.0,"py":154.8},"torso":{"x":139.8,"y":135.6,"w":195,"h":344,"px":252.0,"py":462.0},"armN":{"x":153.6,"y":351.0,"w":52,"h":253,"px":168.6,"py":362.4},"armF":{"x":303.6,"y":363.0,"w":55,"h":233,"px":315.6,"py":376.2},"cuffN":{"x":139.8,"y":327.0,"w":65,"h":52,"px":168.6,"py":362.4},"cuffF":{"x":298.2,"y":328.8,"w":37,"h":49,"px":315.6,"py":376.2},"thighN":{"x":188.4,"y":424.8,"w":86,"h":262,"px":234.0,"py":463.2},"shinN":{"x":163.8,"y":621.6,"w":100,"h":300,"px":219.0,"py":654.0},"thighF":{"x":252.6,"y":444.6,"w":53,"h":235,"px":288.6,"py":465.0},"shinF":{"x":237.6,"y":628.8,"w":137,"h":284,"px":279.6,"py":654.0}}};
+const HAND = {F: [334, 566], N: [188, 576]};          // where each hand sits, in rig pixels
+const SW = 1672, SH = 941;
+const $ = id => document.getElementById(id);
+const stage = $('stage'), world = $('world'), rigEl = $('rig'), shadow = $('shadow');
+
+/* ---------- fit the stage to the window ---------- */
+let fitScale = 1;
+function fit(){
+  const w = $('fit').clientWidth || innerWidth, h = $('fit').clientHeight || innerHeight;
+  fitScale = Math.min(w / SW, h / SH);
+  stage.style.transform = `translate(${(w - SW * fitScale) / 2}px, ${(h - SH * fitScale) / 2}px) scale(${fitScale})`;
+}
+addEventListener('resize', fit); fit();
+
+/* ---------- build the puppet from its cut pieces ---------- */
+const J = {};
+function group(name, parent){
+  const p = RIG.parts[name], d = document.createElement('div');
+  d.style.width = RIG.w + 'px'; d.style.height = RIG.h + 'px';
+  d.style.transformOrigin = p.px + 'px ' + p.py + 'px';
+  parent.appendChild(d); J[name] = d; return d;
+}
+function piece(name, parent){
+  const p = RIG.parts[name], i = new Image();
+  i.src = 'assets/fook_' + name + '.png'; i.alt = '';
+  i.style.left = p.x + 'px'; i.style.top = p.y + 'px'; i.style.width = p.w + 'px'; i.style.height = p.h + 'px';
+  parent.appendChild(i);
+}
+rigEl.style.width = RIG.w + 'px'; rigEl.style.height = RIG.h + 'px';
+rigEl.style.transformOrigin = RIG.feet[0] + 'px ' + RIG.feet[1] + 'px';
+for (const side of ['F', 'N']) {            // far leg first, near leg over it
+  const th = group('thigh' + side, rigEl);
+  const sh = group('shin' + side, th); piece('shin' + side, sh);
+  piece('thigh' + side, th);
+}
+const upper = group('torso', rigEl);        // everything above the hips turns together
+const FOOK = {"x": 244.4, "y": -10, "w": 186, "h": 216, "faces": ["neutral", "talka", "talko", "blink", "shocked", "tired", "pleased", "suspicious"]};      // his expression heads, placed on the puppet
+const headG = group('head', upper), FACE = {};
+FOOK.faces.forEach(f => {
+  const i = new Image(); i.src = 'assets/fook_h_' + f + '.webp'; i.alt = '';
+  i.style.cssText = `left:${FOOK.x}px;top:${FOOK.y}px;width:${FOOK.w}px;height:${FOOK.h}px;visibility:hidden`;
+  FACE[f] = headG.appendChild(i);
+});
+let faceNow = 'neutral'; FACE.neutral.style.visibility = 'visible';
+function fookFace(f){ if (f === faceNow) return; FACE[faceNow].style.visibility = 'hidden'; FACE[f].style.visibility = 'visible'; faceNow = f; }
+function fookMood(en){                                 // a face to go with what he is saying
+  const m = /\?!|Eight…|All of that is mine|my only coin|Where is Counter 3/.test(en) ? 'shocked'
+    : /prank|Too new|What kind of|Since when|inflation|Who burnt/.test(en) ? 'suspicious'
+    : /finally fixed|ever reached my own pocket|Counted\.|saved one year/.test(en) ? 'pleased'
+    : /Do not calculate|no money|too big for me|permanently closed/.test(en) ? 'tired' : '';
+  fook.mood = m; fook.moodUntil = m ? performance.now() + 6000 : 0;
+}
+piece('torso', upper);
+const pinForm = new Image(); pinForm.src = 'assets/p_pinform.webp'; pinForm.alt = ''; pinForm.id = 'pinform';   // the arrival form, pinned to his shirt until he takes it
+pinForm.style.cssText = 'left:281px;top:224px;width:52px;transform:rotate(-7deg)'; upper.appendChild(pinForm);
+piece('armF', group('armF', upper));
+piece('armN', group('armN', upper));
+piece('cuffF', upper); piece('cuffN', upper);
+
+/* a slot in each hand for whatever he is holding */
+const PROP = {};
+for (const side of ['F', 'N']) {
+  const d = document.createElement('div'); d.className = 'prop';
+  d.style.left = HAND[side][0] + 'px'; d.style.top = HAND[side][1] + 'px';
+  J['arm' + side].appendChild(d);
+  PROP[side] = d;
+}
+function setProps(p){
+  for (const side of ['F', 'N']) {
+    PROP[side].className = 'prop' + (p && p[side] ? ' p-' + p[side] : '');
+    PROP[side].style.display = p && p[side] ? 'block' : 'none';
+  }
+}
+
+/* ---------- the other characters: a body, a set of heads, and arm pieces that are swapped to change pose ---------- */
+// x, y: where the body's top-left sits. h*: the head. arms: each piece as [x, y, w, h] from the body. poses: which pieces show.
+const NPCS = {
+  kwai: {"room": "hall", "x": 40, "y": 467, "bw": 118, "bh": 268, "hx": 35, "hy": -109, "hw": 81, "hh": 150, "hrot": 0, "hpx": 22, "hpy": 124, "clip": null, "faces": ["neutral", "talk", "blink", "surprised", "pleased"], "idle": "default", "arms": {"armleft": [0, 19, 42, 128], "armright": [79, 21, 38, 123], "armrightthumb": [2, 27, 109, 73], "armsraised": [-22, -65, 161, 167], "armsunwrap": [-22, 12, 161, 106]}, "poses": {"default": ["armleft", "armright"], "thumb": ["armleft", "armrightthumb"], "raised": ["armsraised"], "unwrap": ["armsunwrap"]}, "pivots": {"left": [32, 34], "right": [87, 34]}, "beard": true},
+  ox: {"room": "hall", "x": 1180, "y": 386, "bw": 320, "bh": 204, "hx": 73, "hy": -119, "hw": 238, "hh": 237, "hrot": -10, "hpx": 109, "hpy": 233, "clip": 592, "faces": ["neutral", "talk", "blink", "surprised", "pleased"], "idle": "default", "arms": {"armleft": [31, 138, 122, 48], "armright": [133, 2, 116, 182], "armleftgrip": [25, 132, 127, 50]}, "poses": {"default": ["armleft", "armright"], "grip": ["armleftgrip", "armright"]}, "pivots": {"left": [27, 155], "right": [292, 160]}},
+  ma: {"room": "bank", "x": 1190, "y": 312, "bw": 201, "bh": 170, "hx": 45, "hy": -136, "hw": 133, "hh": 180, "hrot": 0, "hpx": 55, "hpy": 174, "clip": 486, "faces": ["neutral", "talk", "blink", "surprised", "pleased"], "idle": "default", "arms": {"armleft": [26, 95, 84, 47], "armright": [90, 95, 84, 47], "armrightstamp": [90, 80, 84, 79], "armleftlift": [26, 84, 84, 71]}, "poses": {"default": ["armleft", "armright"], "stamp": ["armleft", "armrightstamp"], "lift": ["armleftlift", "armright"]}, "pivots": {"left": [36, 116], "right": [165, 116]}},
+  yuk: {"room": "depot", "x": 645, "y": 303, "bw": 180, "bh": 172, "hx": -5, "hy": -98, "hw": 173, "hh": 140, "hrot": 0, "hpx": 95, "hpy": 135, "clip": 466, "faces": ["neutral", "talk", "blink", "surprised", "pleased", "blow"], "idle": "hold", "arms": {"armleft": [28, 96, 71, 47], "armright": [86, 96, 71, 48], "clipboard": [81, 69, 72, 119], "armlefthold": [23, 94, 76, 62], "armrighthold": [81, 86, 76, 84], "armrightgive": [81, 95, 76, 61]}, "poses": {"default": ["armleft", "armright"], "hold": ["clipboard", "armlefthold", "armrighthold"], "give": ["armleft", "armrightgive"], "blow": ["armleft", "armright"]}, "pivots": {"left": [33, 117], "right": [148, 117]}}
+};
+const NP = {};
+// Change this whenever the character pictures change, so a phone or browser that kept an older copy fetches the new one.
+const AV = location.protocol === 'http:' ? '?v=20261125c' : '';
+let talker = '', talkEnd = 0;                           // who is speaking, and when their mouth stops
+const talkTime = zh => Math.min(3600, Math.max(1200, zh.length * 100 + 500));   // about as long as it takes to say the line
+for (const id in NPCS) {
+  const c = NPCS[id], M = 8, parts = Object.values(c.arms);
+  const minX = Math.min(0, c.hx, ...parts.map(a => a[0])), minY = Math.min(0, c.hy, ...parts.map(a => a[1]));
+  const maxX = Math.max(c.bw, c.hx + c.hw, ...parts.map(a => a[0] + a[2])), maxY = Math.max(c.bh, ...parts.map(a => a[1] + a[3]));
+  const left = c.x + minX - M, top = c.y + minY - M;
+  const box = document.createElement('div'); box.className = 'npc'; box.id = 'npc-' + id;
+  box.style.cssText = `left:${left}px;top:${top}px;width:${maxX - minX + 2 * M}px;height:${(c.clip || c.y + maxY + M) - top}px`;
+  const nb = document.createElement('div'); nb.className = 'nb';
+  const at = (el, x, y, w, h) => { el.style.cssText = `left:${x - minX + M}px;top:${y - minY + M}px;width:${w}px;height:${h}px`; return el; };
+  const pic = name => { const i = new Image(); i.src = `assets/n_${id}_${name}.webp${AV}`; i.alt = ''; return i; };
+  const bodyEl = nb.appendChild(at(pic('body'), 0, 0, c.bw, c.bh));
+  const nh = at(document.createElement('div'), c.hx, c.hy, c.hw, c.hh); nh.className = 'nh';
+  nh.style.transformOrigin = `${c.hpx}px ${c.hpy}px`;
+  const faces = {};
+  c.faces.forEach(f => { faces[f] = nh.appendChild(pic(f)); });
+  faces.neutral.className = 'on';
+  let nhf = null, bfaces = null;
+  if (c.beard) {                                       // Uncle Kwai: his neck goes behind the robe collar, and his beard hangs in front of the robe
+    nb.insertBefore(nh, bodyEl);
+    nhf = at(document.createElement('div'), c.hx, c.hy, c.hw, c.hh); nhf.className = 'nh'; nhf.style.transformOrigin = nh.style.transformOrigin;
+    bfaces = {}; c.faces.forEach(f => { bfaces[f] = nhf.appendChild(pic('b_' + f)); }); bfaces.neutral.className = 'on';
+    nb.appendChild(nhf);
+  } else nb.appendChild(nh);
+  const arms = {};
+  for (const a in c.arms) {                            // arms go in front; each turns about its own shoulder
+    const [x, y, w, h] = c.arms[a], pv = c.pivots[a.includes('left') ? 'left' : 'right'];
+    arms[a] = nb.appendChild(at(pic(a), x, y, w, h)); arms[a].className = 'na';
+    arms[a].style.transformOrigin = `${pv[0] - x}px ${pv[1] - y}px`; arms[a].style.visibility = 'hidden';
+  }
+  box.appendChild(nb);
+  document.querySelector(`.room[data-room="${c.room}"] img`).after(box);
+  NP[id] = {c, nb, nh, nhf, faces, bfaces, arms, cur: 'neutral', pose: '', poseUntil: 0, blink: 2000 + Math.random() * 3000, mood: '', until: 0, ph: Math.random() * 6};
+  npcShow(id, c.idle);
+}
+function npcShow(id, pose){                            // swap the arm pieces to this pose
+  const n = NP[id]; if (n.pose === pose) return;
+  n.pose = pose; const on = n.c.poses[pose];
+  for (const a in n.arms) n.arms[a].style.visibility = on.includes(a) ? 'visible' : 'hidden';
+}
+function npcPose(id, pose, ms){ NP[id].poseUntil = performance.now() + ms; npcShow(id, pose); }   // an action pose for a while, then back to idle
+function npcMood(id, face, ms){ NP[id].mood = face; NP[id].until = performance.now() + ms; }
+function autoMood(who, en){                            // a face, and sometimes a gesture, to go with what they are saying
+  if (!NP[who]) return;
+  if (who === 'kwai' && /That's me/i.test(en)) { npcMood(who, 'surprised', 5000); npcPose(who, 'raised', 3400); }
+  else if (who === 'ma' && /expecting an auditor/i.test(en)) npcMood(who, 'surprised', 4500);
+  else if (who === 'ox' && /It is stamped/i.test(en)) npcMood(who, 'surprised', 3500);
+  else if (/!/.test(en)) npcMood(who, 'pleased', 4500);
+}
+function npcTick(now){
+  for (const id in NP) {
+    const n = NP[id], mood = now < n.until ? n.mood : '';
+    if (n.poseUntil && now > n.poseUntil) { n.poseUntil = 0; npcShow(id, n.c.idle); }
+    let f = mood || 'neutral';
+    const talking = talker === id && now < talkEnd;
+    if (talking) { if (Math.floor(now / 150) % 2) f = 'talk'; }
+    else if (!mood && now > n.blink) { f = 'blink'; if (now > n.blink + 150) n.blink = now + 2400 + Math.random() * 3600; }
+    if (f !== n.cur) { n.faces[n.cur].className = ''; n.faces[f].className = 'on'; if (n.bfaces) { n.bfaces[n.cur].className = ''; n.bfaces[f].className = 'on'; } n.cur = f; }
+    const sway = calm ? 0 : talking ? 2.2 * Math.sin(now / 95) : 1.1 * Math.sin(now / 1500 + n.ph);
+    const rot = `rotate(${(n.c.hrot + sway * (n.c.hrot ? 0.35 : 1)).toFixed(2)}deg)`; n.nh.style.transform = rot; if (n.nhf) n.nhf.style.transform = rot;   // a head propped on a hand barely moves
+    if (!calm) n.nb.style.transform = `translateY(${(1.6 * Math.sin(now / 1700 + n.ph) + 1.6).toFixed(2)}px)`;
+  }
+}
+
+/* ---------- things in the rooms that change as the story moves ---------- */
+const FLAMES = [...document.querySelectorAll('#flame img')], CONV = [...document.querySelectorAll('.conv')];
+let roomKey = null, flameF = -1;
+function roomTick(now){
+  const k = [S.audit, S.gotParcel, S.stamp, S.cases, S.form].map(v => v ? 1 : 0).join('');
+  if (k !== roomKey) {
+    roomKey = k;
+    $('chain').style.display = S.audit ? 'none' : 'block';          // the ledger cabinet: chained, then open
+    $('cabopen').style.display = S.audit ? 'block' : 'none';
+    $('parcel17').style.display = S.gotParcel ? 'none' : 'block';   // number 17's parcel on the unclaimed shelf
+    $('pile').style.display = S.stamp ? 'none' : 'block';           // Ah Fook's offerings, until they are forwarded
+    $('suitcases').style.display = S.cases ? 'block' : 'none';
+    $('slip').style.display = S.stamp ? 'block' : 'none';           // the note left where the pile was
+    $('pinform').style.display = S.form ? 'none' : 'block';
+    $('inkpad').src = 'assets/p_ink' + (S.stamp ? 'wet' : 'dry') + '.webp';
+  }
+  CONV.forEach((el, i) => {                             // parcels ride the conveyor out of the furnace
+    const t = calm ? 0.5 : (now / 5200 + i * 0.5) % 1;
+    el.style.transform = `translate(${(300 - 150 * t).toFixed(1)}px, ${(418 + 68 * t).toFixed(1)}px)`;
+    el.style.opacity = calm && i ? 0 : Math.min(1, t / 0.12, (1 - t) / 0.15).toFixed(2);
+  });
+  if (calm) return;
+  const f = Math.floor(now / 130) % 4;
+  if (f !== flameF) { flameF = f; FLAMES.forEach((el, i) => { el.style.visibility = i === f ? 'visible' : 'hidden'; }); }
+}
+
+/* ---------- walking and gestures ---------- */
+const fook = {x: 430, y: 808, dir: 1, phase: 0, amp: 0, target: null, then: null, talk: 0, talkW: 0};
+Object.assign(fook, {mood: '', moodUntil: 0, blink: 3000});
+const depthScale = y => 0.40 + (y - 730) * 0.0007;
+function minY(x){ return ROOMS[room].minY(x); }
+function clampFloor(x, y){
+  x = Math.max(70, Math.min(1600, x));
+  return [x, Math.max(minY(x), Math.min(905, y))];
+}
+function walkTo(x, y, then){
+  [x, y] = clampFloor(x, y);
+  fook.target = [x, y]; fook.then = then || null;
+}
+
+/* Gestures are extra joint angles (degrees) laid over the standing pose. Negative arm angles swing forward. */
+const ACT = {
+  give:    t => ({armF: -80, torso: 5, head: 3}),
+  look:    t => ({armF: -52, head: 13, torso: 1}),
+  lever:   t => ({armF: -82 + 9 * Math.sin(t * 15), torso: 9 + 2.5 * Math.sin(t * 15), head: 7, thigh: -9, shin: 17, drop: 4}),
+  write:   t => ({armF: -56, armN: -64 + 5 * Math.sin(t * 24), head: 12, torso: 2}),
+  squeeze: t => ({armF: -84 + 3 * Math.sin(t * 34), armN: -72 + 3 * Math.sin(t * 34 + 2), torso: 9, head: 7})
+};
+let gest = null;
+function gesture(name, dur, props, then){
+  gest = {fn: ACT[name], t: 0, dur, w: gest ? gest.w * 0.5 : 0, live: true, then: then || null};
+  setProps(props);
+}
+function act(name, dur, props, then){                  // a gesture the player has to wait for
+  setBusy(true);
+  gesture(name, dur, props, () => { setBusy(false); if (then) then(); });
+}
+function hand(){                                       // roughly where an outstretched hand is, in stage pixels
+  const s = depthScale(fook.y);
+  return [fook.x + fook.dir * 268 * s - 20, fook.y - 500 * s - 20];
+}
+
+const rot = (el, deg) => { el.style.transform = `rotate(${deg.toFixed(2)}deg)`; };
+function pose(now){
+  const s = depthScale(fook.y), a = fook.amp, p = fook.phase;
+  const g = gest ? gest.fn(gest.t) : null, w = gest ? gest.w : 0;
+  const G = k => (g && g[k] ? g[k] * w : 0);
+  const A = 20, B = 34;
+  const st = 1 - a;                                      // standing: feet a little apart, so the far leg is not hidden behind the near one
+  rot(J.thighN, a * A * Math.cos(p) + st * 4 + G('thigh'));
+  rot(J.shinN,  a * B * Math.max(0, Math.sin(p)) + G('shin'));
+  rot(J.thighF, a * A * Math.cos(p + Math.PI) - st * 8 + G('thigh'));
+  rot(J.shinF,  a * B * Math.max(0, Math.sin(p + Math.PI)) + G('shin'));
+  rot(J.armN,  -a * 15 * Math.cos(p) + G('armN'));
+  rot(J.armF,   a * 15 * Math.cos(p) + G('armF'));
+  rot(J.torso,  a * (1.2 + 1.2 * Math.sin(2 * p)) + G('torso'));
+  let face = now < fook.moodUntil ? fook.mood : 'neutral';
+  if (fook.talk) { const q = Math.floor(now / 140) % 4; face = q === 0 ? 'talka' : q === 2 ? 'talko' : face; }
+  else if (now > fook.blink) { face = 'blink'; if (now > fook.blink + 140) fook.blink = now + 2200 + Math.random() * 3800; }
+  fookFace(face);
+  rot(J.head,  -a * 2 * Math.sin(2 * p) + (1 - a) * 1.2 * Math.sin(now / 1400) + G('head') + fook.talkW * 2.4 * Math.sin(now / 95));
+  const bob = -a * 9 * (1 - Math.abs(Math.cos(p))) + G('drop');
+  rigEl.style.transform = `translate(${fook.x - RIG.feet[0]}px, ${fook.y - RIG.feet[1] + bob * s}px) scale(${s * fook.dir}, ${s})`;
+  const sw = 230 * s;
+  shadow.style.width = sw + 'px';
+  shadow.style.transform = `translate(${fook.x - sw / 2 + 8 * fook.dir}px, ${fook.y - 20}px)`;
+}
+let last = performance.now();
+function tick(now){
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const s = depthScale(fook.y);
+  if (fook.target) {
+    const dx = fook.target[0] - fook.x, dy = fook.target[1] - fook.y, d = Math.hypot(dx, dy);
+    const v = 700 * s;                                   // stage px per second
+    if (d < v * dt + 0.5) {
+      fook.x = fook.target[0]; fook.y = fook.target[1]; fook.target = null;
+      const cb = fook.then; fook.then = null; if (cb) cb();
+    } else {
+      fook.x += dx / d * v * dt; fook.y += dy / d * v * dt;
+      if (Math.abs(dx) > 2) fook.dir = dx > 0 ? 1 : -1;
+      fook.phase += Math.PI * (Math.abs(dx) / d * v * dt + Math.abs(dy) / d * v * dt * 0.6) / (310 * s);
+    }
+  }
+  const goal = fook.target ? 1 : 0;
+  fook.amp += (goal - fook.amp) * Math.min(1, dt * 9);
+  if (!fook.target && fook.amp < 0.01) { fook.amp = 0; fook.phase = 0; }
+  if (fook.talk && now > talkEnd) fook.talk = 0;       // he stops after saying the line once
+  fook.talkW += (fook.talk - fook.talkW) * Math.min(1, dt * 8);
+  if (gest) {
+    const g0 = gest; g0.t += dt;
+    const on = g0.t < g0.dur;
+    g0.w += ((on ? 1 : 0) - g0.w) * Math.min(1, dt * 9);
+    if (!on && g0.live) { g0.live = false; setProps(null); const cb = g0.then; g0.then = null; if (cb) cb(); }
+    if (gest === g0 && !g0.live && g0.w < 0.01) gest = null;
+  }
+  npcTick(now); roomTick(now);
+  pose(now);
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- small effects ---------- */
+function fly(cls, from, to, ms, done){                 // send a little object from one place to another
+  const d = document.createElement('div'); d.className = 'fly ' + cls;
+  d.style.transform = `translate(${from[0]}px, ${from[1]}px)`;
+  world.appendChild(d);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    d.style.transition = `transform ${ms}ms cubic-bezier(.3,-.35,.6,1)`;
+    d.style.transform = `translate(${to[0]}px, ${to[1]}px) scale(.7)`;
+  }));
+  setTimeout(() => { d.remove(); if (done) done(); }, ms + 80);
+}
+const SLOTS = [20, 191, 363, 534, 706, 877, 1048, 1220];    // left edge of each 160-wide slot in the tray picture, which is 1400 wide
+function invSpot(){                                    // where the next item will land in the tray, in stage pixels
+  const r = $('inv').getBoundingClientRect(), sr = stage.getBoundingClientRect();
+  return [(r.left - sr.left + r.width * (SLOTS[inv.length % 8] + 80) / 1400) / fitScale - 28, (r.top - sr.top + r.height / 2) / fitScale - 28];
+}
+function restart(el, cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function stampFx(wet){                                 // Ox-Head grips the stamp, lifts it, slowly, and brings it down
+  npcPose('ox', 'grip', 3050); restart(NP.ox.arms.armleftgrip, 'slam');
+  setTimeout(() => { restart(world, 'shake'); if (wet) $('seal').classList.add('on'); }, 1760);
+}
+
+/* ---------- dialogue ---------- */
+const dlg = $('dlg');
+let queue = [], onDone = null, busy = false, lockUntil = 0;
+const NAMES = {fook: '阿福 AH FOOK', kwai: '貴叔 UNCLE KWAI', ox: '牛頭 OX-HEAD', ma: '馬面 HORSE-FACE', yuk: '阿玉 AH YUK', pa: '廣播 LOUDSPEAKER', hint: '提示 HINT', '': ''};
+function setBusy(b){ busy = b; document.body.classList.toggle('busy', b); }
+/* A line is [who, chinese, english, {fx, wait}] — fx runs as the line appears, wait holds the line for that many ms. */
+function say(lines, done){ if (!sel) tip(''); queue = lines.slice(); onDone = done || null; setBusy(true); next(true); }
+function next(force){
+  if (!force && performance.now() < lockUntil) return;
+  fook.talk = 0; talker = '';
+  if (!queue.length) {
+    dlg.style.display = 'none';
+    const d = onDone; onDone = null;
+    setBusy(false); if (d) d();
+    return;
+  }
+  const [who, zh, en, opt] = queue.shift();
+  dlg.querySelector('.who').textContent = NAMES[who];
+  dlg.querySelector('.zh').textContent = zh;
+  dlg.querySelector('.en').textContent = en;
+  dlg.style.display = 'block';
+  talkEnd = performance.now() + talkTime(zh);
+  if (who === 'fook') { fook.talk = 1; fookMood(en); }
+  talker = who; autoMood(who, en);
+  const more = dlg.querySelector('.more');
+  lockUntil = 0; more.style.visibility = 'visible';
+  if (opt && opt.wait) {
+    lockUntil = performance.now() + opt.wait; more.style.visibility = 'hidden';
+    setTimeout(() => { more.style.visibility = 'visible'; }, opt.wait);
+  }
+  if (opt && opt.fx) opt.fx();
+}
+function tip(text, ms){
+  const t = $('tip'); clearTimeout(tip.h);
+  if (!text) { t.style.display = 'none'; return; }
+  t.textContent = text; t.style.display = 'block';
+  if (ms) tip.h = setTimeout(() => { t.style.display = 'none'; }, ms);
+}
+
+/* ---------- inventory: tap an item to hold it, then tap a ring or another item to use it ---------- */
+let S = {};
+/* Each item: [chinese, english, caption shown under its close-up, icon] */
+const ITEMS = {
+  ticket: ['飛', 'Ticket', () => ['你張飛。前面仲有四百四十四萬四千四百二十七個。', 'Your ticket. There are 4,444,427 souls ahead of you.'], 'ticket'],
+  pen:    ['紅筆', 'Red pen', () => ['「核數師支紅筆。我淨係剩返呢樣嘢。」', "“An auditor's red pen. It's all I have left.”"], 'pen'],
+  phone:  ['電話', 'Phone', () => ['冇訊號。螢幕裂咗，個鐘停咗喺晚上九點四十七分。', 'No signal. The screen is cracked and the clock has stopped at 9:47 pm.'], 'phone'],
+  form:   ['表格', 'Form', () =>
+    !S.timeDone && !S.witness ? ['第四欄同第九欄仲係空嘅。', 'Fields 4 and 9 are still blank.']
+    : !S.timeDone ? ['第四欄仲係空嘅。', 'Field 4 is still blank.']
+    : !S.witness ? ['第九欄仲爭一個見證人。', 'Field 9 still needs a witness.']
+    : ['填齊晒。淨係爭個印。', 'All filled in. Only the stamp is missing.'], 'paper'],
+  coin:   ['銅錢', 'Coin', () => ['一個銅錢。啱啱好夠蓋一個印。', 'One bronze coin. Exactly the price of one stamp.'], 'coin'],
+  stamped:['已蓋印', 'Stamped form', () => ['入境表格，已蓋印。輪候時間：二百九十九年。', 'Arrival form, stamped. Waiting time: 299 years.'], 'paper p-stamped'],
+  cert:   ['投胎證明', 'Certificate', () => ['蓋咗印嘅證明：十七號已經投咗胎，唔會返嚟。', 'Stamped proof: number 17 has been reborn and is not coming back.'], 'paper p-stamped'],
+  t18:    ['十八號飛', 'Ticket 18', () => ['貴叔張飛。十八號。佢揸咗三百年。', "Uncle Kwai's ticket. Number 18. He has held it for three hundred years."], 'ticket p-t18'],
+  parcel: ['包裹', 'Parcel', () => ['十七號個包裹，鋪咗三百年塵。而家歸貴叔。', "Number 17's parcel, under three hundred years of dust. It belongs to Uncle Kwai now."], 'parcel'],
+  ingot:  ['金元寶', 'Ingot', () => ['紙紮金元寶。銀行會收。', 'A paper gold ingot. The bank will take it.'], 'ingot']
+};
+/* What each item looks like up close */
+function formView(stamped){
+  const row = (n, zh, en, v) => `<div class="row"><b>${n}</b><span class="k">${zh}<small>${en}</small></span>${v}</div>`;
+  const val = (zh, en) => `<span class="v">${zh}<small>${en}</small></span>`;
+  const blank = '<span class="v blank">未填 BLANK</span>';
+  return `<div class="v-form"><h3>入境表格<small>ARRIVAL FORM · DEPARTMENT OF THE UNDERWORLD</small></h3>`
+    + row('一', '姓名', 'Name', val('阿福', 'Ah Fook'))
+    + row('二', '年齡', 'Age', val('三十四', '34'))
+    + row('三', '死因', 'Cause of death', val('貨車（紙紮）', 'Lorry (paper offerings)'))
+    + row('四', '死亡時間', 'Time of death', S.timeDone ? '<span class="v ink">晚上九點四十七分<small>9:47 pm</small></span>' : blank)
+    + '<div class="office">第五至八欄：本府專用。請勿填寫，亦請勿查詢。<br>Fields 5–8: office use only. Do not write here. Do not ask.</div>'
+    + row('九', '見證人', 'Witness', S.witness ? '<span class="thumb"></span><span class="v ink">貴叔<small>Uncle Kwai (thumbprint)</small></span>' : blank)
+    + `<div class="row" style="border:0"><span class="k" style="width:auto;flex:1">輪候時間<small>Waiting time</small><span style="display:block;margin-top:4px">${stamped ? '二百九十九年 · 299 years' : '三百年 · 300 years'}</span></span>`
+    + (stamped ? '<span class="box done">准</span>' : '<span class="box">蓋印處<br>STAMP HERE</span>') + '</div></div>';
+}
+const VIEW = {
+  ticket: () => '<div class="v-ticket"><h3>取號票<small>QUEUE TICKET · ARRIVALS HALL</small></h3><div class="num">4,444,444</div><p>預計等候：三百年<small>ESTIMATED WAIT: 300 YEARS</small></p><div class="fine">請勿遺失。遺失者須重新輪候。<br>Do not lose this ticket. Lost tickets rejoin the queue.</div></div>',
+  pen: () => '<img class="v-img" style="width:640px" src="assets/cu_pen.webp" alt="">',
+  phone: () => '<div class="v-phone"><div class="scr"><div class="sig">✕ 冇訊號 NO SIGNAL</div><div class="time">9:47</div><div class="day">星期五 晚上 · Friday pm</div><div class="note"><b>老細 BOSS · 9:46 pm</b>份報告喺邊？<br>Where is the file?</div></div></div>',
+  form: () => formView(false),
+  coin: () => '<img class="v-img" style="width:340px" src="assets/cu_coin.webp" alt="">',
+  stamped: () => formView(true),
+  cert: () => '<div class="v-form"><h3>投胎證明<small>CERTIFICATE OF REBIRTH · HELL BANK</small></h3>'
+    + '<div class="row"><b>一</b><span class="k">輪候號碼<small>Queue number</small></span><span class="v">十七<small>17</small></span></div>'
+    + '<div class="row"><b>二</b><span class="k">開戶<small>Account opened</small></span><span class="v">雍正十三年<small>1735</small></span></div>'
+    + '<div class="row"><b>三</b><span class="k">投胎日期<small>Date of rebirth</small></span><span class="v">乾隆元年<small>1736</small></span></div>'
+    + '<div class="row"><b>四</b><span class="k">投胎為<small>Reborn as</small></span><span class="v">鴨<small>Duck</small></span></div>'
+    + '<div class="row" style="border:0"><span class="k" style="width:auto;flex:1">戶口狀況<small>Account status</small><span style="display:block;margin-top:4px">已結清 · Closed</span></span><span class="box done">准</span></div></div>',
+  t18: () => '<div class="v-ticket old"><h3>取號票<small>QUEUE TICKET · ARRIVALS HALL</small></h3><div class="num">0000018</div><p>預計等候：即將叫號<small>ESTIMATED WAIT: YOU ARE NEXT (ISSUED 1735)</small></p><div class="fine">請勿遺失。遺失者須重新輪候。<br>Do not lose this ticket. Lost tickets rejoin the queue.</div></div>',
+  parcel: () => '<div class="v-parcel"><div class="tag">十七號<small>No. 17</small>乾隆元年到<small>Arrived 1736</small>未領<small>NOT COLLECTED</small></div></div>',
+  ingot: () => '<img class="v-img" style="width:500px" src="assets/cu_ingot.webp" alt="">'
+};
+let inv = [], sel = null;
+function addItem(id){ inv.push(id); drawInv(id); }
+function removeItem(id){ inv = inv.filter(i => i !== id); if (sel === id) hold(null); else drawInv(); }
+function hold(id){
+  sel = id; document.body.classList.toggle('holding', !!id); drawInv();
+  tip(id ? `${ITEMS[id][0]} ${ITEMS[id][1]}　▸　輕觸光圈或另一件物品使用 · 再撳一次收埋　Tap a ring or another item to use it · tap it again to put it away` : '');
+}
+function drawInv(fresh){
+  const el = $('inv'); el.innerHTML = '';
+  inv.forEach((id, n) => {
+    const b = document.createElement('button'); b.type = 'button';
+    const ico = document.createElement('span'); ico.className = 'ico';
+    const pic = new Image(); pic.src = 'assets/ic_' + id + '.webp'; pic.alt = ''; ico.appendChild(pic);
+    b.append(ico); b.title = ITEMS[id][1]; b.setAttribute('aria-label', ITEMS[id][0] + ' ' + ITEMS[id][1]);
+    b.style.left = (SLOTS[n % 8] - 5.5) / 14 + '%';
+    if (id === fresh) b.className = 'new';
+    if (id === sel) { b.className = 'sel'; b.setAttribute('aria-pressed', 'true'); }
+    b.addEventListener('click', e => {
+      e.stopPropagation();
+      if (busy) { if (dlg.style.display === 'block') next(); return; }
+      if (sel === id) hold(null);
+      else if (sel) { const a = sel; hold(null); combine(a, id); }
+      else openItem(id);
+    });
+    el.appendChild(b);
+  });
+}
+/* Tapping an item brings it up close. From there it can be put away, or held to use on something. */
+const pop = $('pop');
+let popId = null;
+function openItem(id){
+  popId = id; tip('');
+  if (id === 'phone') S.time = true;                   // he has now seen when the clock stopped
+  pop.querySelector('.view').innerHTML = VIEW[id]();
+  const cap = ITEMS[id][2]();
+  pop.querySelector('.cap .zh').textContent = cap[0];
+  pop.querySelector('.cap .en').textContent = cap[1];
+  pop.setAttribute('aria-label', ITEMS[id][1]);
+  pop.querySelector('.use').style.display = '';
+  pop.style.display = 'flex'; setBusy(true);
+  gesture('look', 1.4, {F: ({parcel: 'paper', ingot: 'coin', ticket: 'paper'})[ITEMS[id][3].split(' ')[0]] || ITEMS[id][3].split(' ')[0]});
+  pop.querySelector('.use').focus({preventScroll: true});
+}
+function closeItem(use){
+  const id = popId; if (!id) return;
+  popId = null; pop.style.display = 'none'; setBusy(false);
+  if (use && ITEMS[id]) hold(id);
+}
+function openDoc(html, zh, en){                        // something to read that is not an item
+  popId = '__doc'; tip('');
+  pop.querySelector('.view').innerHTML = html;
+  pop.querySelector('.cap .zh').textContent = zh; pop.querySelector('.cap .en').textContent = en;
+  pop.querySelector('.use').style.display = 'none';
+  pop.style.display = 'flex'; setBusy(true);
+}
+pop.addEventListener('click', e => { e.stopPropagation(); if (e.target === pop) closeItem(false); });
+pop.querySelector('.use').addEventListener('click', e => { e.stopPropagation(); closeItem(true); });
+pop.querySelector('.shut').addEventListener('click', e => { e.stopPropagation(); closeItem(false); });
+addEventListener('keydown', e => { if (e.key === 'Escape') closeItem(false); });
+
+const NOPE = [
+  ['fook', '「咁樣唔得。」', "That won't work."],
+  ['fook', '「核數師嘅直覺話我知：唔好。」', "My auditor's instinct says no."],
+  ['fook', '「呢條數計唔掂。」', "That doesn't add up."]
+];
+let nopeI = 0;
+function nope(){ say([NOPE[nopeI++ % NOPE.length]]); }
+
+function combine(a, b){
+  const key = [a, b].sort().join('+');
+  if (key === 'form+pen') {
+    if (S.timeDone) {
+      return say(S.witness
+        ? [['fook', '「張表填齊晒喇。」', 'The form is complete.']]
+        : [['fook', '「第九欄要見證人親手嚟。冒簽？我係核數師，唔係會計師。」', "Field 9 needs the witness's own hand. Forge it? I am an auditor, not an accountant."]]);
+    }
+    if (!S.time) {
+      return say([
+        ['fook', '「死亡時間……我當時冇睇錶。」', "Time of death… I wasn't exactly checking my watch."],
+        ['fook', '「核數師唔會亂填數字。要搵證據。」', 'An auditor never guesses a figure. I need evidence.']
+      ]);
+    }
+    return act('write', 2.0, {F: 'paper', N: 'pen'}, () => {
+      S.timeDone = true; drawInv('form');
+      say([
+        ['', '你用紅筆喺第四欄填上：晚上九點四十七分。', 'In red ink, you fill in Field 4: 9:47 pm.'],
+        ['fook', '「紅字係寫畀死人嘅。啱晒。」', 'Red ink is for the names of the dead. Appropriate.']
+      ]);
+    });
+  }
+  if (key === 'form+phone' && !S.timeDone) {
+    S.time = true;
+    return say([['', '電話個鐘停咗喺晚上九點四十七分。表格第四欄仲係空嘅。你要搵嘢嚟寫。', "The phone's clock stopped at 9:47 pm. Field 4 of the form is still blank. You need something to write with."]]);
+  }
+  nope();
+}
+
+/* ---------- rooms: three places joined by doors, free to walk between ---------- */
+const ROOMS = {
+  hall:  {minY: x => (x < 370 ? 805 : x < 880 ? 728 : 760 + (x - 880) * 0.1)},
+  bank:  {minY: x => (x < 1030 ? 690 : 735)},
+  depot: {minY: x => 700}
+};
+let room = 'hall';
+function setRoom(id){
+  room = id;
+  document.querySelectorAll('.room').forEach(r => r.classList.toggle('on', r.dataset.room === id));
+}
+function go(id, x, y, dir){                             // step through a door
+  setBusy(true); $('fade').classList.add('on');
+  setTimeout(() => {
+    setRoom(id);
+    Object.assign(fook, {x, y, dir, target: null, then: null, phase: 0, amp: 0});
+    $('fade').classList.remove('on'); setBusy(false);
+  }, 280);
+}
+function flipBoard(n){
+  const el = $('board').querySelector('.n');
+  restart(el, 'flip'); setTimeout(() => { el.textContent = n; }, 330);
+}
+const has = id => inv.includes(id);
+
+/* ---------- the scene ---------- */
+function getForm(){ if (!S.form) { S.form = true; addItem('form'); } }
+
+/* --- Uncle Kwai, number 18, three hundred years in the queue --- */
+function kwaiTalk(){
+  if (!S.dead) {
+    S.dead = true;
+    return say([
+      ['fook', '「阿叔，唔好意思。上面個招牌寫住『陰司』——係咪寫錯字？」', "Excuse me, uncle. The sign up there says 'Underworld'. That's a typo, right?"],
+      ['kwai', '「後生仔，你死咗喇。」', "Young man, you're dead."],
+      ['fook', '「唔得㗎，我九點要開會。」', "I can't be. I have a meeting at nine."],
+      ['kwai', '「我雍正年間入嚟，攞十八號。而家叫到十七。」', "I arrived under the Yongzheng Emperor and got number 18. They're on 17 now."],
+      ['kwai', '「十七號嗰位，乾隆元年話去個廁所，就冇返過嚟。」', 'Number 17 said he was popping to the toilet in 1736. Never came back.'],
+      ['kwai', S.form ? '「唔信你死咗？睇吓你張表，死因嗰欄。」' : '「唔信你死咗？睇吓你件衫上面張表。」', S.form ? "Don't believe you're dead? Read your form. The line for cause of death." : "Don't believe you're dead? Read the form pinned to your shirt."],
+      ['', '入境表格 — 姓名：阿福。年齡：三十四。死因：貨車（紙紮）。', 'ARRIVAL FORM — Name: Ah Fook. Age: 34. Cause of death: lorry (paper offerings).', {wait: 900, fx: () => gesture('look', 2.6, {F: 'paper'})}],
+      ['fook', '「咁……個會取消咗未？」', 'So… is the meeting cancelled?']
+    ], () => { getForm(); if (S.checked && !S.witness) kwaiAsk(); });
+  }
+  if (S.split) return say([['kwai', '「殊——我數緊我隻元寶。」', 'Shh. I am counting my ingot.']]);
+  if (S.gotParcel) return kwaiParcel();
+  if (S.t18) return say([['kwai', '「收件處喺左手邊道門。記住，對分。」', 'Offerings Collection is through the door on the left. Remember: we split it.']]);
+  if (S.called) return kwaiWitness();
+  if (S.checked) return kwaiAsk();
+  say([['kwai', '「冇印，乜都唔使諗。蓋印要錢。我？一八九零年之後就冇人燒嘢畀我喇。」', 'No stamp, no anything. Stamps cost money. Me? Nobody has burnt me a thing since 1890.']]);
+}
+function kwaiAsk(){
+  if (S.kwaiAsk) return say([['kwai', '「叫到十八號，我即刻撳手指模。十七號唔嚟，個牌就唔郁。」', "The moment they call 18, you get my thumbprint. But while number 17 stays away, the board stays put."]]);
+  S.kwaiAsk = true;
+  say([
+    ['fook', '「貴叔，可唔可以幫我做見證人？」', 'Uncle Kwai, would you be my witness?'],
+    ['kwai', '「見證？得。不過喺下面，樣樣都有個價。」', 'Witness? Certainly. But down here, everything has a price.'],
+    ['kwai', '「我個價好簡單：我要聽到佢叫十八號。等咗三百年喇，後生仔。」', 'Mine is simple: I want to hear them call number 18. Three hundred years I have waited, young man.'],
+    ['kwai', '「十七號唔嚟，個牌就唔郁。規矩嚟㗎。」', "Number 17 doesn't come, the board doesn't move. Those are the rules."]
+  ]);
+}
+function kwaiWitness(){
+  S.witness = true; S.t18 = true;
+  say([
+    ['kwai', '「三百年！後生仔，手指模？十隻都畀你。」', 'Three hundred years! A thumbprint, young man? Have all ten.'],
+    ['', '貴叔喺你張表第九欄撳咗個手指模。', 'Uncle Kwai presses his thumbprint into Field 9 of your form.', {fx: () => { drawInv('form'); npcPose('kwai', 'thumb', 3200); }}],
+    ['kwai', '「仲有。照第四十四條，十七號啲無人認領嘅嘢，歸下一個號碼——即係我。」', "One more thing. Under Regulation 44, number 17's unclaimed property passes to the next number. Me."],
+    ['kwai', '「我行唔開，個位會冇。你攞住我張飛去收件處幫我攞，我同你對分。」', "I can't leave my spot. Take my ticket to Offerings Collection and fetch it for me. We split it."]
+  ], () => addItem('t18'));
+}
+function kwaiParcel(){
+  S.split = true;
+  say([
+    ['', '貴叔拆開個包裹：兩隻紙紮金元寶，同一張紙條。', 'Uncle Kwai unwraps the parcel: two paper gold ingots, and a note.', {fx: () => { removeItem('parcel'); removeItem('t18'); npcPose('kwai', 'unwrap', 4200); }}],
+    ['kwai', '「『畀阿爺。喺下面唔好慳。』」', "'For Grandpa. Don't go without, down there.'"],
+    ['kwai', '「……佢個孫燒畀佢嘅。佢做咗鴨，用唔著喇。」', '…His grandchild burnt these for him. He is a duck now. No use to him.'],
+    ['kwai', '「一人一隻。你嗰隻攞去銀行換錢啦。」', 'One each. Take yours to the bank and change it.']
+  ], () => addItem('ingot'));
+}
+
+/* --- Ox-Head at the registration counter --- */
+function oxTalk(){
+  if (S.stamp) return say([['ox', '「你登記咗喇。下一位。」', 'You are registered. Next.']]);
+  if (S.paid) {
+    return say([
+      ['ox', '「冇墨，冇印。下一位。」', 'No ink, no stamp. Next.'],
+      ['fook', '「紅墨……邊度有紅墨……」', 'Red ink… where does one find red ink…']
+    ]);
+  }
+  const missT = !S.timeDone, missW = !S.witness, missC = !has('coin');
+  if (!missT && !missW && !missC) return pay();
+  const L = [];
+  if (!S.form) {
+    L.push(['ox', '「表格。」', 'Form.'], ['fook', '「咩表格？」', 'What form?'], ['ox', '「扣喺你件衫上面嗰張。」', 'The one pinned to your shirt.']);
+  }
+  if (!S.checked) {
+    L.push(['ox', '「蓋印，一個銅錢。冇印，唔受理。」', 'One stamp, one coin. No stamp, no service.']);
+    if (missT || missW) {
+      L.push(['ox', '「仲有，表格唔齊。' + (missT ? '第四欄：死亡時間，要準確到分鐘。' : '') + (missW ? '第九欄：見證人，要已登記嘅亡魂。' : '') + '」',
+        'Also, your form is incomplete.' + (missT ? ' Field 4: time of death, to the minute.' : '') + (missW ? ' Field 9: a witness, who must be a registered soul.' : '')]);
+    }
+    if (missC) {
+      S.c3 = true;
+      L.push(
+        ['fook', '「我冇錢。」', 'I have no money.'],
+        ['ox', '「冇錢？去三號櫃檯申請豁免。」', 'No money? Apply for a waiver at Counter 3.'],
+        ['fook', '「三號櫃檯喺邊？」', 'Where is Counter 3?'],
+        ['ox', '「第九殿。永久休息。下一位。」', 'Ninth Court. Permanently closed. Next.']
+      );
+    } else L.push(['ox', '「下一位。」', 'Next.']);
+  } else if (missT) L.push(['ox', '「第四欄。死亡時間。要準確到分鐘。下一位。」', 'Field 4. Time of death. To the minute. Next.']);
+  else if (missW) {
+    if (S.kwaiAsk && !S.called) {
+      S.need17 = true;
+      L.push(
+        ['fook', '「十七號三百年都冇出現。可唔可以叫下一個？」', 'Number 17 has not shown up in three hundred years. Could you call the next number?'],
+        ['ox', '「十七號未到，十八號唔叫得。」', 'Number 17 has not appeared. Number 18 cannot be called.'],
+        ['ox', '「除非有證明十七號唔會嚟。要蓋咗印嘅。下一位。」', 'Unless there is proof that number 17 is not coming. Stamped proof. Next.']
+      );
+    } else L.push(['ox', '「第九欄。見證人。要已登記嘅亡魂。下一位。」', 'Field 9. Witness. Must be a registered soul. Next.']);
+  } else L.push(['ox', '「一個銅錢。冇錢，冇印。下一位。」', 'One coin. No money, no stamp. Next.']);
+  say(L, () => { getForm(); S.checked = true; });
+}
+function oxCert(){
+  S.called = true;
+  say([
+    ['fook', '「投胎證明。十七號乾隆元年已經投咗胎。做咗隻鴨。」', 'Certificate of Rebirth. Number 17 was reborn in 1736. As a duck.'],
+    ['ox', '「……有蓋印。」', '…It is stamped.'],
+    ['', '牛頭望住個牌，嘆咗三百年嚟第一啖氣。', 'Ox-Head looks up at the board and sighs, for the first time in three hundred years.', {wait: 1000, fx: () => { removeItem('cert'); flipBoard('0000018'); }}],
+    ['ox', '「十八號。」', 'Number 18.'],
+    ['kwai', '「係我！係我呀！……等陣，我對腳瞓著咗。」', "That's me! That's ME! …Hold on, my legs have gone to sleep."]
+  ]);
+}
+function pay(){
+  S.paid = true;
+  say([
+    ['fook', '「表格填齊。一個銅錢。唔該，蓋印。」', 'Form complete. One coin. One stamp, please.', {wait: 1400, fx: () => {
+      gesture('give', 1.4, {F: 'coin'});
+      setTimeout(() => { setProps(null); removeItem('coin'); $('cform').style.display = 'block'; fly('p-coin', hand(), [1300, 552], 450); }, 600);
+    }}],
+    ['', '牛頭慢慢舉起個印……再慢慢……蓋落去。', 'Ox-Head raises the stamp, slowly… then, slowly… brings it down.', {wait: 3100, fx: () => stampFx(false)}],
+    ['', '乜都冇。印台乾到裂。', 'Nothing. The ink pad is cracked dry.'],
+    ['ox', '「印台冇墨。紅墨要去三號櫃檯申請。」', 'No ink. Red ink must be requisitioned at Counter 3.'],
+    S.c3 ? ['fook', '「三號櫃檯永久休息喎。」', 'Counter 3 is permanently closed.'] : ['fook', '「三號櫃檯喺邊？」', 'Where is Counter 3?'],
+    S.c3 ? ['ox', '「係。所以我廿年冇蓋過印。下一位。」', 'Correct. Which is why I have not stamped anything in twenty years. Next.']
+         : ['ox', '「第九殿。永久休息。所以我廿年冇蓋過印。下一位。」', 'Ninth Court. Permanently closed. Which is why I have not stamped anything in twenty years. Next.']
+  ]);
+}
+function ink(){
+  if (S.stamp) return;
+  if (!S.paid) return say([['ox', '「唔收筆。淨係收銅錢。」', 'No pens. Coins only.']]);
+  S.stamp = true;
+  say([
+    ['fook', '「紅墨？核數師乜都冇，紅墨就大把。」', 'Red ink? An auditor owns nothing else, but red ink he has.'],
+    ['', '你拗斷支紅筆，將啲墨擠落印台。', 'You snap the red pen in two and squeeze its ink onto the pad.', {wait: 2200, fx: () => {
+      gesture('squeeze', 2.2, {F: 'pen'});
+      [500, 900, 1300].forEach(ms => setTimeout(() => { const h = hand(); fly('p-ink', h, [1414, 570], 380); }, ms));
+      setTimeout(() => removeItem('pen'), 1900);
+    }}],
+    ['fook', '「呢支筆十年嚟淨係識圈人哋嘅錯。今日第一次幫到手。」', "Ten years of circling other people's mistakes. Today it finally fixed one."],
+    ['', '牛頭慢慢舉起個印……再慢慢……蓋落去。', 'Ox-Head raises the stamp, slowly… then, slowly… brings it down.', {wait: 3100, fx: () => stampFx(true)}],
+    ['ox', '「登記完成。輪候時間：二百九十九年。下一位。」', 'Registration complete. Waiting time: 299 years. Next.'],
+    ['fook', '「……慳返一年。」', '…That saved one year.'],
+    ['pa', '「阿福先生，請到冥通銀行櫃檯領取匯款。」', 'Mr Ah Fook, please collect your remittance at the Hell Bank counter. (in Mandarin)'],
+    ['kwai', '「有人燒嘢畀你？後生仔，仲企喺度？快啲去銀行啦。」', 'Someone burnt you money? Then why are you still standing here, young man? Get to the bank.']
+  ], () => { $('cform').style.display = 'none'; removeItem('form'); addItem('stamped'); });
+}
+
+/* --- Ah Yuk, the paper maid at Offerings Collection --- */
+function yukTalk(){
+  if (!S.yuk) {
+    S.yuk = true;
+    return say([
+      ['yuk', '「歡迎光臨焚化收件處！陽間燒乜，呢度收乜！」', 'Welcome to Offerings Collection! Whatever they burn up there arrives down here!'],
+      ['fook', '「你係……紙紮公仔？」', 'Are you… a paper doll?'],
+      ['yuk', '「一九六二年燒落嚟服侍林老爺嘅。佢冇嚟攞我。所以我喺度返工！」', 'Burnt in 1962 to serve a Mr Lim. He never collected me. So I work here!'],
+      ['yuk', '「有嘢攞？要有蓋咗印嘅入境表格先攞得㗎。」', 'Collecting something? You will need a stamped arrival form first.']
+    ]);
+  }
+  if (S.t18 && !S.gotParcel) return yukParcel();
+  if (S.stamp) return say([['yuk', '「阿福先生？你啲嘢多到塞咗條滑槽，已經全部直接送咗去銀行喇！」', 'Mr Ah Fook? Your delivery was so big it jammed the chute. It has all been sent straight to the bank!']]);
+  if (S.saw17 && !S.yukTip) {
+    S.yukTip = true;
+    return say([
+      ['fook', '「十七號個包裹，點解三百年都冇人攞？」', "Number 17's parcel. Why has nobody collected it in three hundred years?"],
+      ['yuk', '「唔知呀！收件人唔嚟，我哋就等。等，係我哋嘅專業！」', 'No idea! If the addressee does not come, we wait. Waiting is our speciality!'],
+      ['yuk', '「想知佢去咗邊？問銀行啦。亡魂去咗邊，啲錢最清楚。」', 'Want to know where he went? Ask the bank. Nobody keeps track of a soul like its money does.']
+    ]);
+  }
+  if (S.yukTip && !S.called) return say([['yuk', '「十七號嘅事？問銀行啦，隔籬大廳右手邊道門！」', 'About number 17? Ask the bank: through the hall, the door on the right!']]);
+  say([['yuk', '「未蓋印，唔攞得。規矩嚟㗎！」', 'No stamp, no collection. Rules are rules!']]);
+}
+function yukParcel(){
+  S.gotParcel = true;
+  say([
+    ['fook', '「十七號已經投咗胎。照第四十四條，佢啲嘢歸十八號。呢張係十八號張飛。」', "Number 17 has been reborn. Under Regulation 44 his property passes to number 18. This is number 18's ticket.", {wait: 1300, fx: () => gesture('give', 1.3, {F: 'paper'})}],
+    ['yuk', '「第四十四條！好耐冇人講過呢條喇！等我攞畀你！」', 'Regulation 44! Nobody has quoted that one in ages! Let me fetch it!'],
+    ['', '佢吹走三百年嘅塵，將包裹交咗畀你。', 'She blows off three hundred years of dust and hands you the parcel.', {fx: () => { npcMood('yuk', 'blow', 2200); setTimeout(() => npcPose('yuk', 'give', 3200), 1500); }}]
+  ], () => { $('gone17').style.display = 'block'; addItem('parcel'); });
+}
+
+/* --- Horse-Face, teller at the Hell Bank --- */
+function maTalk(){
+  if (S.rich) return;
+  if (S.stamp) return maPay();
+  if (has('ingot')) return maExchange();
+  if (S.found17 && !S.certDone) return maCert();
+  if (!S.ma) {
+    S.ma = true;
+    return say([
+      ['ma', '「冥通銀行。存款、提款、匯款、投訴。投訴櫃檯已經取消。」', 'Hell Bank. Deposits, withdrawals, remittances, complaints. The complaints counter has been abolished.'],
+      ['fook', '「我想查吓有冇人匯錢畀我。」', 'I would like to check whether anyone has sent me money.'],
+      ['ma', '「攞匯款，要有蓋咗印嘅入境表格。冇印，唔受理。」', 'Remittances require a stamped arrival form. No stamp, no service.']
+    ]);
+  }
+  say([['ma', '「冇印，唔受理。下一位。」', 'No stamp, no service. Next.']]);
+}
+function maAudit(){
+  if (S.audit) return openLedger();
+  S.audit = true;
+  say([
+    ['fook', '「我就係核數師。」', 'I am an auditor.', {wait: 1300, fx: () => gesture('give', 1.3, {F: 'pen'})}],
+    ['ma', '「……紅筆。真係核數師。」', '…A red pen. A genuine auditor.'],
+    ['ma', '「終於嚟喇。請慢慢查。唔好查得太仔細。」', 'At last. Please, take your time. Do not look too closely.']
+  ], openLedger);
+}
+const LEDGER = [
+  ['3', '三號', 'No. 3', '唐朝開戶。戶主升咗仙。結餘：零。', 'Opened in the Tang dynasty. Holder promoted to immortal. Balance: nil.',
+    ['fook', '「升咗仙，戶口冇錢。唔關事。」', 'Promoted, with an empty account. Not relevant.']],
+  ['9', '九號', 'No. 9', '宋朝開戶。戶主欠本行利息八百年。', 'Opened in the Song dynasty. Holder owes this bank 800 years of interest.',
+    ['fook', '「欠八百年利息。唔怪得佢唔出現。」', 'Eight hundred years of interest owing. No wonder he keeps his head down.']],
+  ['17', '十七號', 'No. 17', '雍正十三年開戶。乾隆元年戶主投胎（鴨）。戶口結清。', 'Opened 1735. Holder reborn 1736 (duck). Account closed.', null],
+  ['18', '十八號', 'No. 18', '戶主：貴。自一八九零年起無進帳。', 'Holder: Kwai. No deposits since 1890.',
+    ['fook', '「貴叔。一八九零年之後冇人燒過嘢畀佢。同佢講嘅一樣。」', 'Uncle Kwai. Nobody has burnt him anything since 1890. Exactly as he said.']],
+  ['me', '四四四四四四四號', 'No. 4,444,444', '新開戶。戶主：阿福。進帳：審核中。', 'New account. Holder: Ah Fook. Incoming funds: under review.',
+    ['fook', '「我個戶口。『審核中』。我最憎呢三個字。」', "My own account. 'Under review.' My least favourite words."]]
+];
+function openLedger(){
+  openDoc('<div class="v-form v-ledger"><h3>靜止戶口<small>DORMANT ACCOUNTS · HELL BANK</small></h3>'
+    + LEDGER.map(r => `<button type="button" class="lrow" data-k="${r[0]}"><b>${r[1]}<small>${r[2]}</small></b><span>${r[3]}<small>${r[4]}</small></span></button>`).join('') + '</div>',
+    S.found17 ? '十七號：乾隆元年投胎，做咗鴨。' : '邊一行解釋到條隊點解三百年都唔郁？撳嗰一行。',
+    S.found17 ? 'No. 17: reborn in 1736, as a duck.' : 'Which entry explains why the queue has not moved in three hundred years? Tap it.');
+  pop.querySelectorAll('.lrow').forEach(b => b.addEventListener('click', e => {
+    e.stopPropagation(); const r = LEDGER.find(x => x[0] === b.dataset.k); closeItem(false);
+    if (r[5]) return say([r[5]]);
+    if (S.found17) return say([['fook', '「十七號。鴨。我記得。」', 'Number 17. The duck. I remember.']]);
+    S.found17 = true;
+    say([
+      ['fook', '「搵到喇。十七號乾隆元年投咗胎。做咗隻鴨。」', 'Found it. Number 17 was reborn in 1736. As a duck.'],
+      ['fook', '「成條隊等咗隻鴨三百年。」', 'The whole queue has been waiting three hundred years for a duck.'],
+      ['fook', '「我要一份蓋咗印嘅證明。」', 'I need that in writing. Stamped.'],
+      ['ma', '「投胎證明，手續費一個銅錢。」', 'Certificate of Rebirth. Fee: one coin.']
+    ]);
+  }));
+}
+function maCert(){
+  if (!has('coin')) return say([['ma', '「投胎證明，手續費一個銅錢。冇錢，冇證明。下一位。」', 'Certificate of Rebirth. Fee: one coin. No money, no certificate. Next.']]);
+  S.certDone = true;
+  say([
+    ['fook', '「一個銅錢。一份投胎證明。」', 'One coin. One Certificate of Rebirth.', {wait: 1300, fx: () => { gesture('give', 1.3, {F: 'coin'}); setTimeout(() => { setProps(null); removeItem('coin'); }, 650); }}],
+    ['', '馬面收咗個銅錢，喺張紙上面蓋咗個印。佢個印台，啲墨多到滴。', 'Horse-Face takes the coin and stamps a slip of paper. His ink pad, you notice, is dripping with ink.', {fx: () => npcPose('ma', 'stamp', 3400)}],
+    ['fook', '「……嗰個係我唯一一個銅錢。」', '…That was my only coin.']
+  ], () => addItem('cert'));
+}
+function maExchange(){
+  say([
+    ['fook', '「一隻金元寶。換銅錢。」', 'One gold ingot. For coins, please.', {wait: 1300, fx: () => { gesture('give', 1.3, {F: 'coin'}); setTimeout(() => { setProps(null); removeItem('ingot'); }, 650); }}],
+    ['ma', '「今日牌價：一隻換一個。請點清。」', "Today's rate: one ingot, one coin. Kindly count it."],
+    ['fook', '「一。點清。」', 'One. Counted.']
+  ], () => addItem('coin'));
+}
+function maPay(){
+  S.rich = true;
+  say([
+    ['fook', '「已蓋印嘅入境表格。我嚟攞匯款。」', 'One stamped arrival form. I am here for my remittance.', {wait: 1300, fx: () => gesture('give', 1.3, {F: 'paper'})}],
+    ['ma', '「阿福先生。匯款一筆，由陽間家屬焚化。」', 'Mr Ah Fook. One remittance, burnt by family among the living.'],
+    ['ma', '「金額：八千億。冥通銀行鈔票。」', 'Amount: eight hundred billion. In Hell Bank notes.'],
+    ['fook', '「八……千億？我屋企人邊有咁多錢燒？」', 'Eight… hundred billion? Since when can my family afford to burn that much?'],
+    ['ma', '「本行唔問來源。請喺呢度簽名。」', 'This bank does not ask about sources. Sign here.', {wait: 1900, fx: () => gesture('write', 1.9, {F: 'paper'})}],
+    ['', '馬面由櫃檯下面拎出一個、兩個、三個紙皮喼。', 'From under the counter Horse-Face produces one, two, three paper suitcases.', {fx: () => { S.cases = true; npcPose('ma', 'lift', 4500); }}],
+    ['fook', '「我核咗十年數，第一次見到條數大到我唔敢核。」', 'Ten years an auditor, and this is the first number too big for me to check.']
+  ], () => { setBusy(true); setTimeout(() => { $('end').style.display = 'flex'; }, 700); });
+}
+
+const HOT = {
+  /* arrivals hall */
+  kwai: {at: [400, 808], face: -1, run: kwaiTalk},
+  board: {at: [830, 740], face: 1, run(){
+    say([
+      ['', `現正服務：${S.called ? '0000018' : '0000017'}。你張飛：4,444,444。`, `Now serving: ${S.called ? '0000018' : '0000017'}. Your ticket: 4,444,444.`],
+      S.called ? ['fook', '「郁咗一格。照咁計，輪到我要……算，唔好計。」', 'It moved by one. At that rate my turn comes in… no. Do not calculate.']
+        : ['fook', S.dead ? '「三百年。我排車牌都冇排過咁耐。」' : '「應該好快啩。」', S.dead ? "Three hundred years. Even renewing my licence was faster." : 'Should be quick, surely.']
+    ]);
+  }},
+  sign: {at: [1500, 860], face: 1, run(){
+    say([
+      ['', '辦理流程：一、報到取號。二、提交表格。三、審核輪候。四、分配去處。', 'PROCEDURE: 1. Take a number. 2. Submit forms. 3. Await review. 4. Be assigned.'],
+      ['', '細字：每個步驟均須蓋印。印費另計。', 'Small print: every step requires a stamp. Stamps are charged separately.'],
+      ['', '細字下面仲有更細嘅字：墨水自備。', 'Smaller print, under the small print: applicants supply their own ink.']
+    ]);
+  }},
+  machine: {at: [765, 750], face: -1, run(){
+    if (S.coin) return say([['', '部機空咗。佢出咗張 4,444,445 號飛嚟報復你。', 'The machine is empty now. It prints ticket 4,444,445 out of spite.']]);
+    say([['', '取號機壞咗。入錢口有啲嘢閃閃吓，不過條罅太窄，手指伸唔入。', 'The ticket machine is jammed. Something glints in the coin slot, but the gap is too narrow for fingers.']]);
+  }},
+  ox: {at: [1120, 800], face: 1, run: oxTalk},
+  toDepot: {at: [120, 862], face: -1, exit: true, run(){ go('depot', 1440, 750, -1); }},
+  toBank: {at: [1560, 880], face: 1, exit: true, run(){ go('bank', 230, 745, 1); }},
+
+  /* hell bank */
+  ma: {at: [1070, 775], face: 1, run: maTalk},
+  ledger: {at: [560, 730], face: -1, run(){
+    if (S.audit) return openLedger();
+    say([
+      ['', '一個寫住「靜止戶口」嘅帳簿櫃，用鐵鏈鎖住。', 'A cabinet of ledgers marked DORMANT ACCOUNTS, chained shut.'],
+      ['ma', '「帳簿唔畀客睇。淨係畀核數師睇。」', 'Ledgers are not for customers. Auditors only.'],
+      ['ma', '「本行等咗個核數師好耐。由明朝等到而家。」', 'This bank has been expecting an auditor for some time. Since the Ming dynasty.']
+    ]);
+  }},
+  rates: {at: [800, 715], face: 1, run(){
+    say([
+      ['', '今日牌價：金元寶一隻，換一個銅錢。冥鈔一億，換一個銅錢。', "TODAY'S RATES: one gold ingot buys one coin. One hundred million in Hell Bank notes buys one coin."],
+      ['fook', '「一億換一個銅錢？呢度通脹仲勁過我公司啲開支。」', "A hundred million to one? The inflation down here is worse than my firm's expense claims."]
+    ]);
+  }},
+  vault: {at: [1420, 790], face: 1, run(){
+    say([
+      ['', '夾萬門虛掩。入面啲鈔票一紮一紮，全部簇新。', 'The vault door stands ajar. Inside, banknotes in neat bundles, every one of them crisp and new.'],
+      ['fook', '「新得滯。」', 'Too new.']
+    ]);
+  }},
+  bankExit: {at: [150, 725], face: -1, exit: true, run(){ go('hall', 1540, 880, -1); }},
+
+  /* offerings collection */
+  yuk: {at: [575, 740], face: 1, run: yukTalk},
+  chute: {at: [520, 735], face: -1, run(){
+    if (S.stamp) return say([['', '寫住你個名嗰堆唔見咗。地下淨返一張紙：「已轉送銀行」。', 'The pile with your name on it is gone. One slip remains on the floor: FORWARDED TO BANK.']]);
+    say([
+      ['', '滑槽不停有包裹跌落嚟，個個都仲暖。', 'Parcels keep sliding out of the chute. Every one of them is still warm.'],
+      ['', '有一堆寫住你個名，疊到上天花板。', 'One pile has your name on it. It is stacked to the ceiling.'],
+      ['fook', '「全部都係我嘅？邊個燒咁多嘢畀我？」', 'All of that is mine? Who burnt me this much?']
+    ]);
+  }},
+  shelf: {at: [1150, 735], face: 1, run(){
+    if (S.gotParcel) return say([['', '「無人認領」架。十七號個位吉咗，塵入面淨返一個四方印。', "The UNCLAIMED shelf. Number 17's spot is empty: a clean square in the dust."]]);
+    S.saw17 = true;
+    const L = [
+      ['', '「無人認領」架。紙紮房車、紙紮大屋、幾個紙紮工人。全部鋪滿塵。', 'The UNCLAIMED shelf. A paper sedan, a paper mansion, a few paper servants. All thick with dust.'],
+      ['', '最舊嗰個包裹掛住張牌：「十七號。乾隆元年到。未領。」', "The oldest parcel carries a tag: 'No. 17. Arrived 1736. Not collected.'"]
+    ];
+    if (S.dead) L.push(['fook', '「十七號……成條隊就係等緊佢。」', 'Number 17… the one the whole queue is waiting for.']);
+    say(L);
+  }},
+  depotExit: {at: [1520, 735], face: 1, exit: true, run(){ go('hall', 130, 862, 1); }}
+};
+
+/* what happens when a held item is used on a hotspot */
+const USE = {
+  machine: {
+    pen(){
+      if (S.coin) return say([['fook', '「入面冇嘢喇。」', 'Nothing left in there.']]);
+      act('lever', 1.9, {F: 'pen'}, () => {
+        S.coin = true;
+        fly('p-coin', [628, 530], invSpot(), 650, () => addItem('coin'));
+        say([
+          ['', '你用紅筆撬咗一個銅錢出嚟。', 'You lever out one bronze coin with the pen.'],
+          ['fook', '「核咗十年數，第一次有錢落我袋。」', 'Ten years of auditing, and this is the first money that ever reached my own pocket.']
+        ]);
+      });
+    },
+    ticket(){ say([['', '部機唔收退飛。', 'The machine does not accept returns.']]); }
+  },
+  kwai: {
+    phone(){ S.dead ? say([['kwai', '「會發光嘅磚頭？得意。不過我淨係想聽到佢叫十八號。」', 'A glowing brick? Charming. But all I want is to hear them call number 18.']]) : kwaiTalk(); },
+    ticket(){ S.dead ? say([['kwai', '「四百幾萬號？我呢張十八號都等咗三百年。」', 'Four million and something? My number 18 has taken three hundred years.']]) : kwaiTalk(); },
+    pen(){ S.dead ? say([['kwai', '「我唔識寫字。撳手指模就得。」', 'I never learned to write. A thumbprint, I can do.']]) : kwaiTalk(); },
+    coin(){ S.dead ? say([['kwai', '「一個銅錢？留返嚟蓋印啦，後生仔。」', 'One coin? Keep it for your stamp, young man.']]) : kwaiTalk(); },
+    cert(){ say([['kwai', '「畀牛頭睇呀，唔係畀我睇！」', 'Show it to Ox-Head, not to me!']]); },
+    t18(){ say([['kwai', '「我張飛你攞住先。去收件處，左手邊道門。」', 'You hold on to my ticket. Offerings Collection, the door on the left.']]); },
+    ingot(){ say([['kwai', '「嗰隻係你嘅。攞去銀行換啦。」', 'That one is yours. Change it at the bank.']]); },
+    form: kwaiTalk, parcel: kwaiTalk
+  },
+  ox: {
+    pen: ink, coin: oxTalk, form: oxTalk, cert: oxCert,
+    ticket(){ say([['ox', '「四四四四四四四號。而家叫到' + (S.called ? '十八' : '十七') + '。坐低。」', 'Number 4,444,444. Now serving ' + (S.called ? '18' : '17') + '. Sit.']]); },
+    phone(){ say([['ox', '「櫃檯範圍，不准拍攝。」', 'No photography at the counter.']]); },
+    t18(){ say([['ox', '「十八號要本人到。」', 'Number 18 must appear in person.']]); },
+    ingot(){ say([['ox', '「唔收元寶。淨係收銅錢。去銀行換。」', 'No ingots. Coins only. Change it at the bank.']]); },
+    parcel(){ say([['ox', '「櫃檯唔寄存行李。」', 'This counter does not store luggage.']]); }
+  },
+  board: {
+    pen(){ say([['fook', '「改個號碼？偽造公文，罪加一等。……遲啲先。」', 'Change the number? Forging official records adds to the sentence. …Maybe later.']]); }
+  },
+  ma: {
+    pen: maAudit, ingot: maExchange,
+    coin(){ S.found17 && !S.certDone ? maCert() : say([['ma', '「存一個銅錢？最低存款額：一億。」', 'Deposit one coin? The minimum deposit is one hundred million.']]); },
+    stamped: maTalk,
+    form(){ say([['ma', '「未蓋印。唔受理。」', 'Not stamped. No service.']]); },
+    phone(){ say([['ma', '「銀行範圍，不准拍攝。」', 'No photography inside the bank.']]); },
+    ticket(){ say([['ma', '「呢度唔使攞飛。呢度要嘅係錢。」', 'No ticket is needed here. Here, what you need is money.']]); },
+    cert(){ say([['ma', '「呢張係本行出嘅。唔使畀返我。」', 'This bank issued that. You need not hand it back.']]); }
+  },
+  ledger: { pen: maAudit },
+  yuk: {
+    t18: yukTalk,
+    pen(){ say([['yuk', '「紅筆？我簽唔到名㗎，我隻手係紙嚟！」', 'A red pen? I cannot sign anything, my hands are paper!']]); },
+    phone(){ say([['yuk', '「嘩，新款！上個月燒咗三千部落嚟！」', 'Ooh, the new model! Three thousand of those came down last month!']]); },
+    coin(){ say([['yuk', '「我哋唔收錢。我哋收表格！」', 'We do not take money. We take forms!']]); },
+    form(){ say([['yuk', '「呢張未蓋印喎！」', 'This one is not stamped!']]); },
+    stamped: yukTalk,
+    cert(){ say([['yuk', '「投胎證明！個印好靚。不過呢張要畀牛頭先啱。」', 'A Certificate of Rebirth! Lovely stamp. But that one is for Ox-Head.']]); }
+  },
+  shelf: {
+    t18(){ say([['fook', '「要經櫃檯。自己郁手就係偷。」', 'It has to go through the counter. Helping myself would be theft.']]); }
+  }
+};
+
+document.querySelectorAll('.hot').forEach(b => b.addEventListener('click', e => {
+  e.stopPropagation(); if (busy) { if (dlg.style.display === 'block') next(); return; }
+  const id = b.dataset.id, h = HOT[id], item = sel;
+  hold(null); setBusy(true);
+  walkTo(h.at[0], h.at[1], () => {
+    fook.dir = h.face; setBusy(false);
+    if (!item || h.exit) return h.run();
+    const f = (USE[id] || {})[item];
+    f ? f() : nope();
+  });
+}));
+stage.addEventListener('click', e => {
+  if (dlg.style.display === 'block') { next(); return; }
+  if (busy) return;
+  const r = stage.getBoundingClientRect();
+  walkTo((e.clientX - r.left) / fitScale, (e.clientY - r.top) / fitScale);
+});
+dlg.addEventListener('click', e => { e.stopPropagation(); next(); });
+
+/* ---------- hints: a nudge first, the answer on the second ask ---------- */
+function nextHint(){
+  const H = (key, a, a2, b, b2) => [key, [a, a2], [b, b2]];
+  if (!S.checked) return H('ask', '去櫃檯問吓牛頭要啲乜。', 'Ask Ox-Head at the counter what he needs.', '喺報到大廳輕觸牛頭身上嘅光圈。', 'In the arrivals hall, tap the glowing ring on Ox-Head.');
+  if (!S.timeDone) return S.time
+    ? H('write', '你知道時間喇。用咩填落張表度？', 'You know the time now. What could you write it down with?', '撳「紅筆」，揀「使用」，再撳「表格」。', 'Tap the red pen, choose Use, then tap the form.')
+    : H('time', '你身上有冇嘢記低咗出事嗰一刻？', 'Is anything you carry likely to have recorded the moment it happened?', '撳「電話」睇清楚個螢幕。', 'Tap the phone and read its screen.');
+  if (!S.witness) {
+    if (!S.kwaiAsk) return H('witness', '見證人要係已登記嘅亡魂。你識得一個。', 'The witness must be a registered soul. You have met one.', '同大廳最左邊排隊嘅貴叔傾吓。', 'Talk to Uncle Kwai, on the far left of the queue in the hall.');
+    if (S.called) return H('thumb', '叫咗十八號喇。貴叔應承過你乜？', 'Number 18 has been called. What did Uncle Kwai promise you?', '返大廳同貴叔傾。', 'Go back to the hall and talk to Uncle Kwai.');
+    if (has('cert')) return H('cert', '你有蓋咗印嘅證明。邊個話要睇？', 'You hold stamped proof. Who asked for it?', '撳「投胎證明」，揀「使用」，再撳牛頭。', 'Tap the certificate, choose Use, then tap Ox-Head.');
+    if (!S.need17) return H('need17', '個牌點解唔郁？問吓負責叫號嗰位。', 'Why will the board not move? Ask the one who calls the numbers.', '同牛頭傾多次。', 'Talk to Ox-Head again.');
+    if (!S.audit) return H('audit', '邊個會知一個亡魂去咗邊？跟住啲錢。銀行淨係畀一種人睇帳簿。', 'Who would know where a soul went? Follow the money. The bank shows its ledgers to one kind of person only.', '去冥通銀行（大廳右邊道門），撳「紅筆」，揀「使用」，再撳馬面。', 'Go to the Hell Bank (the door on the right of the hall). Tap the red pen, choose Use, then tap Horse-Face.');
+    if (!S.found17) return H('ledger', '條隊等緊邊個？喺帳簿度搵佢。', 'Who is the queue waiting for? Find him in the ledger.', '喺銀行撳帳簿櫃，再撳十七號嗰行。', 'In the bank, tap the ledger cabinet, then tap the row for No. 17.');
+    return has('coin')
+      ? H('buycert', '證明要一個銅錢。你有。', 'The certificate costs one coin. You have one.', '喺銀行輕觸馬面。', 'In the bank, tap Horse-Face.')
+      : H('coin', '證明要一個銅錢。大廳部取號機入錢口有嘢閃，手指伸唔入。', "The certificate costs one coin. Something glints in the hall's ticket machine, where fingers won't fit.", '喺大廳撳「紅筆」，揀「使用」，再撳取號機。', 'In the hall, tap the red pen, choose Use, then tap the ticket machine.');
+  }
+  if (!S.paid) {
+    if (has('coin')) return H('pay', '齊晒喇。返去櫃檯。', 'You have everything. Go back to the counter.', '喺大廳輕觸牛頭。', 'In the hall, tap Ox-Head.');
+    if (has('ingot')) return H('change', '牛頭淨係收銅錢。邊度可以換？', 'Ox-Head only takes coins. Where can an ingot be changed?', '去冥通銀行輕觸馬面。', 'Go to the Hell Bank and tap Horse-Face.');
+    if (S.gotParcel) return H('parcel', '個包裹係貴叔嘅。', 'The parcel belongs to Uncle Kwai.', '返大廳同貴叔傾。', 'Go back to the hall and talk to Uncle Kwai.');
+    return H('fetch', '你個銅錢用咗。貴叔話過會同你對分一樣嘢。', 'Your coin is spent. Uncle Kwai offered to split something with you.', '去收件處（大廳左邊道門），輕觸紙紮妹阿玉。', 'Go to Offerings Collection (the door on the left of the hall) and tap Ah Yuk, the paper maid.');
+  }
+  if (!S.stamp) return H('ink', '牛頭要紅墨。核數師身上最多係乜？', 'Ox-Head needs red ink. What does an auditor always carry?', '撳「紅筆」，揀「使用」，再撳牛頭。', 'Tap the red pen, choose Use, then tap Ox-Head.');
+  return H('rich', '廣播叫你去邊度？', 'Where did the loudspeaker tell you to go?', '去冥通銀行輕觸馬面。', 'Go to the Hell Bank and tap Horse-Face.');
+}
+let hintKey = '', hintLvl = 0;
+$('hint').addEventListener('click', e => {
+  e.stopPropagation();
+  if (busy) { if (dlg.style.display === 'block') next(); return; }
+  const [key, a, b] = nextHint();
+  if (key !== hintKey) { hintKey = key; hintLvl = 0; }
+  const h = hintLvl++ === 0 ? a : b;
+  hold(null); say([['hint', h[0], h[1]]]);
+});
+
+/* ---------- cold open ---------- */
+const INTRO = [
+  ['吉隆坡。星期五，晚上九點四十七分。', 'Kuala Lumpur. Friday, 9:47 pm.'],
+  ['「得，老細。星期六我返。星期日都得。」', 'Yes, boss. I can come in on Saturday. Sunday too.'],
+  ['［貨車響號。煞車聲。然後係好多、好多紙嘅聲。］', '[A lorry horn. Brakes. Then the sound of a great deal of paper.]']
+];
+function start(){
+  S = {}; sel = null; inv = ['ticket', 'pen', 'phone']; setRoom('hall'); $('board').querySelector('.n').textContent = '0000017'; $('gone17').style.display = 'none'; hintKey = ''; hintLvl = 0; gest = null; setProps(null);
+  document.body.classList.remove('holding'); drawInv(); tip(''); popId = null; pop.style.display = 'none'; for (const id in NP) { NP[id].poseUntil = 0; NP[id].until = 0; npcShow(id, NP[id].c.idle); }
+  $('cform').style.display = 'none'; $('seal').classList.remove('on');
+  Object.assign(fook, {x: 430, y: 808, dir: 1, phase: 0, amp: 0, target: null, then: null, talk: 0});
+  $('end').style.display = 'none';
+  const intro = $('intro'); let i = 0;
+  intro.style.display = 'flex'; intro.style.opacity = 1; setBusy(true);
+  const show = () => { intro.querySelector('.zh').textContent = INTRO[i][0]; intro.querySelector('.en').textContent = INTRO[i][1]; };
+  show();
+  intro.onclick = e => {
+    e.stopPropagation();
+    if (++i < INTRO.length) return show();
+    intro.onclick = null; intro.style.opacity = 0;
+    setTimeout(() => {
+      intro.style.display = 'none';
+      say([
+        ['fook', '「……『陰司總務府』？邊個政府部門會改個咁嘅名㗎。」', "…'Department of the Underworld'? What kind of government office calls itself that?"],
+        ['fook', '「實係邊個同事整蠱我。」', 'This has to be someone from the office playing a prank.']
+      ], () => {
+        tip('輕觸地面行路 · 輕觸光圈查看 · 撳物品睇清楚或使用　Tap the floor to walk · tap a ring to look or talk · tap an item to look at it or use it', 9000);
+      });
+    }, 800);
+  };
+}
+const titleEl = $('title');                              // waits for the pictures, then for a tap
+let titleReady = false;
+const titleGo = () => { titleReady = true; $('titletap').textContent = '輕觸開始 · TAP TO START'; };
+document.readyState === 'complete' ? titleGo() : addEventListener('load', titleGo);
+titleEl.addEventListener('click', e => { e.stopPropagation(); if (!titleReady) return; titleEl.style.opacity = 0; setTimeout(() => { titleEl.style.display = 'none'; }, 800); });
+$('replay').addEventListener('click', e => { e.stopPropagation(); start(); });
+start();
+</script>
+</body>
+</html>
