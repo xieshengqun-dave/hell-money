@@ -220,6 +220,12 @@ body.busy #hint{opacity:.5}
 .cover h1{font-family:'Noto Serif TC',serif;font-weight:900;font-size:120px;letter-spacing:16px;margin:0;color:#f6d98a}
 .cover h2{font-weight:500;font-size:34px;letter-spacing:10px;margin:8px 0 40px;color:#e8b9a0}
 .cover button{min-height:88px;padding:0 50px;border:2px solid #f3ead7;border-radius:6px;background:transparent;color:#f3ead7;font-size:28px;letter-spacing:3px;cursor:pointer;font-family:inherit}
+#snd{position:absolute;right:26px;top:16px;z-index:40;width:70px;height:70px;padding:0;border-radius:50%;border:2px solid #c9a24b;background:rgba(18,9,8,.78);color:#f0d9a0;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.5)}
+#snd svg{width:40px;height:40px}
+#snd .slash{display:none}
+#snd.off{color:#8d7a62}
+#snd.off .wave{display:none}
+#snd.off .slash{display:block}
 #tip{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:10px 26px;background:rgba(18,9,8,.9);border:1px solid #c9a24b;border-radius:40px;font-size:21px;display:none;pointer-events:none;white-space:nowrap}
 #rotate{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-size:14px;color:#d9cfc4;display:none;padding:0 20px}
 @media (orientation:portrait){#rotate{display:block}}
@@ -280,6 +286,7 @@ body.busy #hint{opacity:.5}
   </div>
 
   <div id="tip"></div>
+  <button id="snd" type="button" aria-label="Sound on or off 開關聲音" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.6L12 18.5v-13L7.6 9.5z" fill="currentColor"/><path class="wave" d="M15.5 9a4 4 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/><path class="slash" d="M16 9.5l5 5M21 9.5l-5 5"/></svg></button>
   <div id="tray">
     <div id="inv" aria-label="Inventory"></div>
     <button id="hint" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2.2h5c.1-1 .5-1.700 1.100-2.200A6 6 0 0 0 12 3z"/></svg>提示<small>HINT</small></button>
@@ -605,7 +612,7 @@ function setBusy(b){ busy = b; document.body.classList.toggle('busy', b); }
 function say(lines, done){ if (!sel) tip(''); queue = lines.slice(); onDone = done || null; setBusy(true); next(true); }
 function next(force){
   if (!force && performance.now() < lockUntil) return;
-  fook.talk = 0; talker = '';
+  fook.talk = 0; talker = ''; AUD.stopVoice();
   if (!queue.length) {
     dlg.style.display = 'none';
     const d = onDone; onDone = null;
@@ -618,6 +625,9 @@ function next(force){
   dlg.querySelector('.en').textContent = en;
   dlg.style.display = 'block';
   talkEnd = performance.now() + talkTime(zh);
+  AUD.voice(who, zh, d => { talkEnd = performance.now() + d * 1000 + 200; });   // the mouth moves for as long as the recording runs
+  AUD.lineFx(zh);
+  if (queue.length) AUD.prefetch(queue[0][0], queue[0][1]);
   if (who === 'fook') { fook.talk = 1; fookMood(en); }
   talker = who; autoMood(who, en);
   const more = dlg.querySelector('.more');
@@ -1269,10 +1279,13 @@ function start(){
   $('end').style.display = 'none';
   const intro = $('intro'); let i = 0;
   intro.style.display = 'flex'; intro.style.opacity = 1; setBusy(true);
-  const show = () => { intro.querySelector('.zh').textContent = INTRO[i][0]; intro.querySelector('.en').textContent = INTRO[i][1]; };
+  const show = () => {
+    intro.querySelector('.zh').textContent = INTRO[i][0]; intro.querySelector('.en').textContent = INTRO[i][1];
+    if (i === 2) AUD.sfx('lorry'); else if (INTRO[i][0].charAt(0) === '「') AUD.voice('fook', INTRO[i][0]);
+  };
   show();
   intro.onclick = e => {
-    e.stopPropagation();
+    e.stopPropagation(); AUD.stopVoice();
     if (++i < INTRO.length) return show();
     intro.onclick = null; intro.style.opacity = 0;
     setTimeout(() => {
@@ -1286,6 +1299,121 @@ function start(){
     }, 800);
   };
 }
+/* ---------- sound: music and room tone loop, effects and voice play once ---------- */
+/* Everything goes through one Web Audio graph, so it works from the offline copy and on phones.
+   Files are listed in assets/audio/index.json: {vo: {"who|line": file}, sfx, music, amb}. A missing file is simply silent. */
+const AUD = (() => {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  const LV = {music: .42, amb: .5, sfx: .9, vo: 1};
+  let ctx = null, idx = null, unlocked = false, tok = 0, voNode = null;
+  const bus = {}, cache = new Map(), sfxBuf = {}, layer = {music: {name: null}, amb: {name: null}};
+  let muted = false; try { muted = localStorage.getItem('hm-muted') === '1'; } catch (e) {}
+  const LINE_FX = [                                    // a sound that goes with a line of narration: [text it starts with, [[sound, delay ms]]]
+    ['貴叔喺你張表第九欄', [['thumbprint', 300]]],
+    ['你拗斷支紅筆', [['pen_snap', 300], ['ink_wet', 1500]]],
+    ['你用紅筆撬咗一個銅錢', [['ticket_jam', 100]]],
+    ['你用紅筆喺第四欄填上', [['pen_write', 200]]],
+    ['貴叔拆開個包裹', [['parcel_open', 300]]],
+    ['佢吹走三百年嘅塵', [['paper_rustle', 200], ['suitcase', 1700]]],
+    ['「本行唔問來源', [['pen_write', 2300]]]
+  ];
+  const load = file => {
+    if (!cache.has(file)) cache.set(file, fetch('assets/audio/' + file).then(r => { if (!r.ok) throw new Error(r.status); return r.arrayBuffer(); })
+      .then(ab => new Promise((ok, no) => { const p = ctx.decodeAudioData(ab, ok, no); if (p && p.catch) p.catch(no); }))
+      .catch(e => { cache.delete(file); throw e; }));
+    return cache.get(file);
+  };
+  function unlock(){                                   // browsers only allow sound after a tap
+    if (!AC) return;
+    if (!ctx) {
+      ctx = new AC();
+      bus.master = ctx.createGain(); bus.master.gain.value = muted ? 0 : 1; bus.master.connect(ctx.destination);
+      for (const k in LV) { bus[k] = ctx.createGain(); bus[k].gain.value = LV[k]; bus[k].connect(bus.master); }
+      fetch('assets/audio/index.json').then(r => r.json()).then(j => {
+        idx = j; for (const id in j.sfx) load(j.sfx[id]).then(b => { sfxBuf[id] = b; }).catch(() => {});
+        sync();
+      }).catch(() => {});
+    }
+    if (ctx.state !== 'running') ctx.resume().catch(() => {});
+    if (!unlocked) { unlocked = true; const s = ctx.createBufferSource(); s.buffer = ctx.createBuffer(1, 1, 22050); s.connect(ctx.destination); s.start(0); }
+  }
+  ['click', 'touchend', 'keydown'].forEach(t => addEventListener(t, unlock, true));
+  document.addEventListener('visibilitychange', () => { if (!ctx) return; document.hidden ? ctx.suspend() : ctx.resume().catch(() => {}); });
+  function sfx(id, vol = 1, delay = 0){
+    if (!ctx || muted) return;
+    const go = () => { const b = sfxBuf[id]; if (!b) return; const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = b; g.gain.value = vol; s.connect(g); g.connect(bus.sfx); s.start(); };
+    delay ? setTimeout(go, delay) : go();
+  }
+  function setLayer(kind, name){
+    const L = layer[kind]; if (L.name === name || L.bad === name) return;
+    L.name = name;
+    if (L.node) { const n = L.node, g = L.gain; g.gain.setTargetAtTime(0, ctx.currentTime, .35); setTimeout(() => { try { n.stop(); } catch (e) {} }, 2200); L.node = L.gain = null; }
+    const f = name && idx && (idx[kind] || {})[name]; if (!f) return;
+    load(f).then(buf => {
+      if (L.name !== name) return;
+      const s = ctx.createBufferSource(), g = ctx.createGain(); s.buffer = buf; s.loop = true; g.gain.value = 0; s.connect(g); g.connect(bus[kind]); s.start();
+      g.gain.setTargetAtTime(1, ctx.currentTime, .6); L.node = s; L.gain = g;
+      const keep = [idx.music[layer.music.name], idx.amb[layer.amb.name]];     // drop the decoded copies of tracks no longer playing
+      for (const k of [...cache.keys()]) if (/^[ma]_/.test(k) && !keep.includes(k)) cache.delete(k);
+    }).catch(() => { L.bad = name; });
+  }
+  function sync(){                                     // which music and room tone belong to what is on screen
+    if (!ctx || !idx) return;
+    let m = null, a = null;
+    if ($('end').style.display === 'flex') m = 'ending';
+    else if ($('title').style.display !== 'none') m = null;
+    else if ($('intro').style.display === 'flex') m = 'title';
+    else m = a = room;
+    setLayer('music', m); setLayer('amb', a);
+  }
+  setInterval(sync, 400);
+  const duck = on => { if (!ctx) return; bus.music.gain.setTargetAtTime(on ? LV.music * .45 : LV.music, ctx.currentTime, .2); bus.amb.gain.setTargetAtTime(on ? LV.amb * .5 : LV.amb, ctx.currentTime, .2); };
+  const voFile = (who, zh) => idx && idx.vo && idx.vo[who + '|' + zh];
+  function stopVoice(){ tok++; if (voNode) { try { voNode.onended = null; voNode.stop(); } catch (e) {} voNode = null; } duck(false); }
+  function voice(who, zh, cb){                         // speak a line; cb gets its length in seconds
+    stopVoice();
+    const f = voFile(who, zh); if (!f || !ctx || muted) return;
+    const my = ++tok;
+    load(f).then(buf => {
+      if (my !== tok) return;
+      const s = ctx.createBufferSource(); s.buffer = buf; s.connect(bus.vo); s.start(); voNode = s; duck(true);
+      s.onended = () => { if (voNode === s) { voNode = null; duck(false); } };
+      if (cb) cb(buf.duration);
+    }).catch(() => {});
+  }
+  function prefetch(who, zh){
+    const f = voFile(who, zh); if (!f || !ctx || muted) return;
+    load(f).catch(() => {});
+    const vs = [...cache.keys()].filter(k => k.startsWith('v_')); vs.slice(0, Math.max(0, vs.length - 12)).forEach(k => cache.delete(k));
+  }
+  function lineFx(zh){ for (const [start, list] of LINE_FX) if (zh.startsWith(start)) list.forEach(([id, ms]) => sfx(id, 1, ms)); }
+  const btn = $('snd');
+  const paint = () => { btn.classList.toggle('off', muted); btn.setAttribute('aria-pressed', String(muted)); };
+  function setMuted(m){
+    muted = m; try { localStorage.setItem('hm-muted', m ? '1' : '0'); } catch (e) {}
+    if (bus.master) bus.master.gain.setTargetAtTime(m ? 0 : 1, ctx.currentTime, .05);
+    if (m) stopVoice();
+    paint();
+  }
+  btn.addEventListener('click', e => { e.stopPropagation(); unlock(); setMuted(!muted); });
+  paint();
+  return {unlock, sfx, voice, stopVoice, prefetch, lineFx, sync};
+})();
+/* the effects that belong to things the game already does */
+(() => {
+  const wrap = (name, before) => { const orig = window[name]; window[name] = function(...a){ before(...a); return orig.apply(this, a); }; };
+  wrap('addItem', () => AUD.sfx('got'));
+  wrap('getForm', () => { if (!S.form) AUD.sfx('ticket_tear'); });
+  wrap('nope', () => AUD.sfx('wrong'));
+  wrap('go', () => AUD.sfx('door'));
+  wrap('hold', id => AUD.sfx(id ? 'pick' : 'tap', id ? 1 : .6));
+  wrap('openItem', () => AUD.sfx('pick'));
+  wrap('flipBoard', () => AUD.sfx('board_ding'));
+  wrap('stampFx', wet => AUD.sfx(wet ? 'stamp' : 'stamp_dry', 1, 1760));
+  wrap('fly', cls => { if (cls === 'p-coin') AUD.sfx('coin', 1, 450); });
+  wrap('openDoc', html => { if (String(html).includes('v-ledger')) { AUD.sfx('chain_unlock'); AUD.sfx('cabinet_open', 1, 1300); } });
+  document.querySelectorAll('.hot').forEach(b => b.addEventListener('click', () => AUD.sfx('tap', .7)));
+})();
 const titleEl = $('title');                              // waits for the pictures, then for a tap
 let titleReady = false;
 const titleGo = () => { titleReady = true; $('titletap').textContent = '輕觸開始 · TAP TO START'; };
