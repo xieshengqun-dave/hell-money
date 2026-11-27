@@ -1,6 +1,6 @@
 /* Service worker: lets the game open and play with no network after the first visit.
    build_pwa.py fills in VERSION (a hash of every file) and PRECACHE. */
-const VERSION = '0784b93548';
+const VERSION = 'a339142f58';
 const PRECACHE = [
  "./",
  "index.html",
@@ -67,6 +67,7 @@ const PRECACHE = [
  "assets/n_kwai_body.webp",
  "assets/n_kwai_neutral.webp",
  "assets/n_kwai_pleased.webp",
+ "assets/n_kwai_queue.webp",
  "assets/n_kwai_surprised.webp",
  "assets/n_kwai_talk.webp",
  "assets/n_ma_armleft.webp",

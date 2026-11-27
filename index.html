@@ -385,18 +385,18 @@ function setProps(p){
 /* ---------- the other characters: a body, a set of heads, and arm pieces that are swapped to change pose ---------- */
 // x, y: where the body's top-left sits. h*: the head. arms: each piece as [x, y, w, h] from the body. poses: which pieces show.
 const NPCS = {
-  kwai: {"room": "hall", "x": 40, "y": 467, "bw": 118, "bh": 268, "hx": 35, "hy": -109, "hw": 81, "hh": 150, "hrot": 0, "hpx": 22, "hpy": 124, "clip": null, "faces": ["neutral", "talk", "blink", "surprised", "pleased"], "idle": "default", "arms": {"armleft": [0, 19, 42, 128], "armright": [79, 21, 38, 123], "armrightthumb": [2, 27, 109, 73], "armsraised": [-22, -65, 161, 167], "armsunwrap": [-22, 12, 161, 106]}, "poses": {"default": ["armleft", "armright"], "thumb": ["armleft", "armrightthumb"], "raised": ["armsraised"], "unwrap": ["armsunwrap"]}, "pivots": {"left": [32, 34], "right": [87, 34]}, "beard": true},
+  kwai: {"room": "hall", "x": 38, "y": 445, "bw": 122, "bh": 290, "hx": 26, "hy": -100, "hw": 69, "hh": 128, "beard": true, "hrot": 0, "hpx": 35, "hpy": 116, "clip": null, "faces": ["neutral", "talk", "blink", "surprised", "pleased"], "idle": "default", "arms": {"armleft": [12, 9, 29, 155], "armright": [82, 8, 28, 173], "armrightthumb": [-2, 5, 102, 55], "armsraised": [-32, -82, 186, 104], "armsunwrap": [21, 12, 84, 71]}, "poses": {"default": ["armleft", "armright"], "thumb": ["armleft", "armrightthumb"], "raised": ["armsraised"], "unwrap": ["armsunwrap"]}, "pivots": {"left": [30, 14], "right": [93, 14]}, "queue": {"x": 35, "y": -50, "w": 7, "h": 197, "px": 3, "py": 2, "rot": -12, "sway": 4}},
   ox: {"room": "hall", "x": 1180, "y": 386, "bw": 320, "bh": 204, "hx": 73, "hy": -119, "hw": 238, "hh": 237, "hrot": -10, "hpx": 109, "hpy": 233, "clip": 592, "faces": ["neutral", "talk", "blink", "surprised", "pleased"], "idle": "default", "arms": {"armleft": [31, 138, 122, 48], "armright": [133, 2, 116, 182], "armleftgrip": [25, 132, 127, 50]}, "poses": {"default": ["armleft", "armright"], "grip": ["armleftgrip", "armright"]}, "pivots": {"left": [27, 155], "right": [292, 160]}},
   ma: {"room": "bank", "x": 1190, "y": 312, "bw": 201, "bh": 170, "hx": 45, "hy": -136, "hw": 133, "hh": 180, "hrot": 0, "hpx": 55, "hpy": 174, "clip": 486, "faces": ["neutral", "talk", "blink", "surprised", "pleased"], "idle": "default", "arms": {"armleft": [26, 95, 84, 47], "armright": [90, 95, 84, 47], "armrightstamp": [90, 80, 84, 79], "armleftlift": [26, 84, 84, 71]}, "poses": {"default": ["armleft", "armright"], "stamp": ["armleft", "armrightstamp"], "lift": ["armleftlift", "armright"]}, "pivots": {"left": [36, 116], "right": [165, 116]}},
   yuk: {"room": "depot", "x": 645, "y": 303, "bw": 180, "bh": 172, "hx": -5, "hy": -98, "hw": 173, "hh": 140, "hrot": 0, "hpx": 95, "hpy": 135, "clip": 466, "faces": ["neutral", "talk", "blink", "surprised", "pleased", "blow"], "idle": "hold", "arms": {"armleft": [28, 96, 71, 47], "armright": [86, 96, 71, 48], "clipboard": [81, 69, 72, 119], "armlefthold": [23, 94, 76, 62], "armrighthold": [81, 86, 76, 84], "armrightgive": [81, 95, 76, 61]}, "poses": {"default": ["armleft", "armright"], "hold": ["clipboard", "armlefthold", "armrighthold"], "give": ["armleft", "armrightgive"], "blow": ["armleft", "armright"]}, "pivots": {"left": [33, 117], "right": [148, 117]}}
 };
 const NP = {};
 // Change this whenever the character pictures change, so a phone or browser that kept an older copy fetches the new one.
-const AV = location.protocol === 'http:' ? '?v=20261125c' : '';
+const AV = location.protocol === 'http:' ? '?v=20261127a' : '';
 let talker = '', talkEnd = 0;                           // who is speaking, and when their mouth stops
 const talkTime = zh => Math.min(3600, Math.max(1200, zh.length * 100 + 500));   // about as long as it takes to say the line
 for (const id in NPCS) {
-  const c = NPCS[id], M = 8, parts = Object.values(c.arms);
+  const c = NPCS[id], M = 8, parts = Object.values(c.arms).concat(c.queue ? [[c.queue.x - 40, c.queue.y, c.queue.w + 80, c.queue.h]] : []);
   const minX = Math.min(0, c.hx, ...parts.map(a => a[0])), minY = Math.min(0, c.hy, ...parts.map(a => a[1]));
   const maxX = Math.max(c.bw, c.hx + c.hw, ...parts.map(a => a[0] + a[2])), maxY = Math.max(c.bh, ...parts.map(a => a[1] + a[3]));
   const left = c.x + minX - M, top = c.y + minY - M;
@@ -406,6 +406,8 @@ for (const id in NPCS) {
   const at = (el, x, y, w, h) => { el.style.cssText = `left:${x - minX + M}px;top:${y - minY + M}px;width:${w}px;height:${h}px`; return el; };
   const pic = name => { const i = new Image(); i.src = `assets/n_${id}_${name}.webp${AV}`; i.alt = ''; return i; };
   const bodyEl = nb.appendChild(at(pic('body'), 0, 0, c.bw, c.bh));
+  let qel = null;                                      // Uncle Kwai's braid hangs behind him from its top and sways
+  if (c.queue) { qel = at(pic('queue'), c.queue.x, c.queue.y, c.queue.w, c.queue.h); qel.style.transformOrigin = `${c.queue.px}px ${c.queue.py}px`; qel.style.transform = `rotate(${c.queue.rot}deg)`; nb.insertBefore(qel, bodyEl); }
   const nh = at(document.createElement('div'), c.hx, c.hy, c.hw, c.hh); nh.className = 'nh';
   nh.style.transformOrigin = `${c.hpx}px ${c.hpy}px`;
   const faces = {};
@@ -416,7 +418,6 @@ for (const id in NPCS) {
     nb.insertBefore(nh, bodyEl);
     nhf = at(document.createElement('div'), c.hx, c.hy, c.hw, c.hh); nhf.className = 'nh'; nhf.style.transformOrigin = nh.style.transformOrigin;
     bfaces = {}; c.faces.forEach(f => { bfaces[f] = nhf.appendChild(pic('b_' + f)); }); bfaces.neutral.className = 'on';
-    nb.appendChild(nhf);
   } else nb.appendChild(nh);
   const arms = {};
   for (const a in c.arms) {                            // arms go in front; each turns about its own shoulder
@@ -424,9 +425,10 @@ for (const id in NPCS) {
     arms[a] = nb.appendChild(at(pic(a), x, y, w, h)); arms[a].className = 'na';
     arms[a].style.transformOrigin = `${pv[0] - x}px ${pv[1] - y}px`; arms[a].style.visibility = 'hidden';
   }
+  if (nhf) nb.appendChild(nhf);                        // the beard goes on last, in front of the arms
   box.appendChild(nb);
   document.querySelector(`.room[data-room="${c.room}"] img`).after(box);
-  NP[id] = {c, nb, nh, nhf, faces, bfaces, arms, cur: 'neutral', pose: '', poseUntil: 0, blink: 2000 + Math.random() * 3000, mood: '', until: 0, ph: Math.random() * 6};
+  NP[id] = {c, nb, nh, nhf, qel, faces, bfaces, arms, cur: 'neutral', pose: '', poseUntil: 0, blink: 2000 + Math.random() * 3000, mood: '', until: 0, ph: Math.random() * 6};
   npcShow(id, c.idle);
 }
 function npcShow(id, pose){                            // swap the arm pieces to this pose
@@ -454,6 +456,7 @@ function npcTick(now){
     if (f !== n.cur) { n.faces[n.cur].className = ''; n.faces[f].className = 'on'; if (n.bfaces) { n.bfaces[n.cur].className = ''; n.bfaces[f].className = 'on'; } n.cur = f; }
     const sway = calm ? 0 : talking ? 2.2 * Math.sin(now / 95) : 1.1 * Math.sin(now / 1500 + n.ph);
     const rot = `rotate(${(n.c.hrot + sway * (n.c.hrot ? 0.35 : 1)).toFixed(2)}deg)`; n.nh.style.transform = rot; if (n.nhf) n.nhf.style.transform = rot;   // a head propped on a hand barely moves
+    if (n.qel && !calm) n.qel.style.transform = `rotate(${(n.c.queue.rot + n.c.queue.sway * Math.sin(now / 1300 + n.ph) + (talking ? 1.5 * Math.sin(now / 95) : 0)).toFixed(2)}deg)`;
     if (!calm) n.nb.style.transform = `translateY(${(1.6 * Math.sin(now / 1700 + n.ph) + 1.6).toFixed(2)}px)`;
   }
 }
