@@ -217,6 +217,9 @@ body.busy #hint{opacity:.5}
 #title h1{font-size:150px;letter-spacing:30px;padding-left:30px;text-shadow:0 4px 0 #5a2410,0 0 30px rgba(0,0,0,.6)}
 #title h2{color:#f0d9a0;letter-spacing:16px;padding-left:16px;margin-bottom:0;text-shadow:0 2px 8px rgba(0,0,0,.7)}
 #title .tap{bottom:150px;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+#tbtns{position:absolute;bottom:140px;left:0;right:0;display:none;justify-content:center;gap:40px}
+#tbtns button{background:rgba(26,13,11,.55);border-color:#f0d9a0;color:#f0d9a0;min-width:300px;line-height:1.25}
+#tbtns button small{display:block;font-size:20px;letter-spacing:4px;opacity:.85}
 .cover h1{font-family:'Noto Serif TC',serif;font-weight:900;font-size:120px;letter-spacing:16px;margin:0;color:#f6d98a}
 .cover h2{font-weight:500;font-size:34px;letter-spacing:10px;margin:8px 0 40px;color:#e8b9a0}
 .cover button{min-height:88px;padding:0 50px;border:2px solid #f3ead7;border-radius:6px;background:transparent;color:#f3ead7;font-size:28px;letter-spacing:3px;cursor:pointer;font-family:inherit}
@@ -301,7 +304,7 @@ body.busy #hint{opacity:.5}
 
   <div class="cover" id="intro"><div class="zh"></div><div class="en"></div><div class="tap">輕觸繼續 · TAP TO CONTINUE</div></div>
   <div class="cover" id="end" style="display:none;cursor:default"><h1>第一場完</h1><h2>END OF SCENE 1</h2><div class="en" style="margin:0 0 50px">下一場：發達 · Next: being rich</div><button id="replay" type="button">再玩一次 · Play again</button></div>
-  <div class="cover" id="title"><h1>冥通</h1><h2>HELL MONEY</h2><div class="tap" id="titletap">載入中 · LOADING</div></div>
+  <div class="cover" id="title"><h1>冥通</h1><h2>HELL MONEY</h2><div class="tap" id="titletap">載入中 · LOADING</div><div id="tbtns"><button type="button" id="bcont">繼續<small>CONTINUE</small></button><button type="button" id="bnew">新遊戲<small>NEW GAME</small></button></div></div>
 </div>
 <div id="rotate"><img src="assets/ui_rotate.webp" alt="" style="display:block;width:150px;margin:0 auto 8px">Turn your phone sideways for a bigger view.</div>
 </div>
@@ -392,7 +395,7 @@ const NPCS = {
 };
 const NP = {};
 // Change this whenever the character pictures change, so a phone or browser that kept an older copy fetches the new one.
-const AV = location.protocol === 'http:' ? '?v=20261127c' : '';
+const AV = location.protocol === 'http:' ? '?v=20261127e' : '';
 let talker = '', talkEnd = 0;                           // who is speaking, and when their mouth stops
 const talkTime = zh => Math.min(3600, Math.max(1200, zh.length * 100 + 500));   // about as long as it takes to say the line
 for (const id in NPCS) {
@@ -1076,7 +1079,7 @@ function maPay(){
     ['ma', '「本行唔問來源。請喺呢度簽名。」', 'This bank does not ask about sources. Sign here.', {wait: 1900, fx: () => gesture('write', 1.9, {F: 'paper'})}],
     ['', '馬面由櫃檯下面拎出一個、兩個、三個紙皮喼。', 'From under the counter Horse-Face produces one, two, three paper suitcases.', {fx: () => { S.cases = true; npcPose('ma', 'lift', 4500); }}],
     ['fook', '「我核咗十年數，第一次見到條數大到我唔敢核。」', 'Ten years an auditor, and this is the first number too big for me to check.']
-  ], () => { setBusy(true); setTimeout(() => { $('end').style.display = 'flex'; }, 700); });
+  ], () => { saveOn = false; clearSave(); setBusy(true); setTimeout(() => { $('end').style.display = 'flex'; }, 700); });
 }
 
 const HOT = {
@@ -1274,12 +1277,54 @@ const INTRO = [
   ['「得，老細。星期六我返。星期日都得。」', 'Yes, boss. I can come in on Saturday. Sunday too.'],
   ['［貨車響號。煞車聲。然後係好多、好多紙嘅聲。］', '[A lorry horn. Brakes. Then the sound of a great deal of paper.]']
 ];
-function start(){
+/* ---------- saving: one slot, written when the game is idle, versioned, with a backup copy ---------- */
+const SAVE_KEY = 'hm-save', SAVE_VERSION = 1;
+const S_KEYS = ['time', 'form', 'yukTip', 'yuk', 'witness', 'timeDone', 't18', 'stamp', 'split', 'saw17', 'rich', 'paid', 'ma', 'kwaiAsk', 'gotParcel', 'found17', 'dead', 'coin', 'checked', 'certDone', 'cases', 'called', 'c3', 'audit', 'need17'];
+let saveOn = false;                                   // only true while the player is actually playing
+function readSlot(key){                               // a save we can trust, or null. Unknown or newer versions are ignored and left alone.
+  try {
+    const d = JSON.parse(localStorage.getItem(key));
+    if (!d || typeof d !== 'object' || d.v !== SAVE_VERSION || !Array.isArray(d.inv) || typeof d.room !== 'string' || !ROOMS[d.room]) return null;
+    const flags = {}; for (const k of S_KEYS) if (d.S && d.S[k] === true) flags[k] = true;
+    const items = []; for (const i of d.inv) if (typeof i === 'string' && ITEMS[i] && !items.includes(i)) items.push(i);
+    if (!Number.isFinite(d.x) || !Number.isFinite(d.y)) return null;
+    return {S: flags, inv: items, room: d.room, x: d.x, y: d.y, dir: d.dir === -1 ? -1 : 1, board: d.board === '0000018' ? '0000018' : '0000017', gone17: d.gone17 === true};
+  } catch (e) { return null; }
+}
+const loadSave = () => readSlot(SAVE_KEY) || readSlot(SAVE_KEY + '.bak');
+function clearSave(){ try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(SAVE_KEY + '.bak'); } catch (e) {} }
+function writeSave(){
+  if (!saveOn || busy || $('end').style.display === 'flex') return;
+  if (!Object.keys(S).length && inv.length === 3 && room === 'hall') return;       // nothing played yet
+  try {
+    const prev = localStorage.getItem(SAVE_KEY);
+    const snap = JSON.stringify({v: SAVE_VERSION, t: Date.now(), S, inv, room, x: Math.round(fook.x), y: Math.round(fook.y), dir: fook.dir,
+      board: $('board').querySelector('.n').textContent, gone17: $('gone17').style.display === 'block'});
+    if (prev) localStorage.setItem(SAVE_KEY + '.bak', prev);                        // keep the last good one in case this write is cut short
+    localStorage.setItem(SAVE_KEY, snap);
+  } catch (e) {}
+}
+(() => {                                              // save a moment after every scene that finishes, and when the page is left
+  const orig = window.setBusy; let t = 0;
+  window.setBusy = function(b){ orig.call(this, b); clearTimeout(t); if (!b) t = setTimeout(writeSave, 1200); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) writeSave(); });
+  addEventListener('pagehide', writeSave);
+})();
+function start(resume){
   S = {}; sel = null; inv = ['ticket', 'pen', 'phone']; setRoom('hall'); $('board').querySelector('.n').textContent = '0000017'; $('gone17').style.display = 'none'; hintKey = ''; hintLvl = 0; gest = null; setProps(null);
   document.body.classList.remove('holding'); drawInv(); tip(''); popId = null; pop.style.display = 'none'; for (const id in NP) { NP[id].poseUntil = 0; NP[id].until = 0; npcShow(id, NP[id].c.idle); }
   $('cform').style.display = 'none'; $('seal').classList.remove('on');
   Object.assign(fook, {x: 430, y: 808, dir: 1, phase: 0, amp: 0, target: null, then: null, talk: 0});
   $('end').style.display = 'none';
+  saveOn = false;
+  if (resume) {                                        // carry on from a save: no opening, straight back into the room
+    S = resume.S; inv = resume.inv.slice(); setRoom(resume.room); roomKey = null;
+    $('board').querySelector('.n').textContent = resume.board; $('gone17').style.display = resume.gone17 ? 'block' : 'none';
+    const [fx, fy] = clampFloor(resume.x, resume.y); Object.assign(fook, {x: fx, y: fy, dir: resume.dir});
+    $('intro').style.display = 'none'; drawInv(); setBusy(false); saveOn = true;
+    tip('已接返之前嘅進度 · Continuing from your last save', 5000);
+    return;
+  }
   const intro = $('intro'); let i = 0;
   intro.style.display = 'flex'; intro.style.opacity = 1; setBusy(true);
   const show = () => {
@@ -1297,6 +1342,7 @@ function start(){
         ['fook', '「……『陰司總務府』？邊個政府部門會改個咁嘅名㗎。」', "…'Department of the Underworld'? What kind of government office calls itself that?"],
         ['fook', '「實係邊個同事整蠱我。」', 'This has to be someone from the office playing a prank.']
       ], () => {
+        saveOn = true;
         tip('輕觸地面行路 · 輕觸光圈查看 · 撳物品睇清楚或使用　Tap the floor to walk · tap a ring to look or talk · tap an item to look at it or use it', 9000);
       });
     }, 800);
@@ -1419,11 +1465,15 @@ const AUD = (() => {
 })();
 const titleEl = $('title');                              // waits for the pictures, then for a tap
 let titleReady = false;
-const titleGo = () => { titleReady = true; $('titletap').textContent = '輕觸開始 · TAP TO START'; };
+const saved = loadSave();                                // a game in progress? then the title offers Continue and New game
+const titleGo = () => { titleReady = true; if (saved) { $('titletap').style.display = 'none'; $('tbtns').style.display = 'flex'; } else $('titletap').textContent = '輕觸開始 · TAP TO START'; };
 document.readyState === 'complete' ? titleGo() : addEventListener('load', titleGo);
-titleEl.addEventListener('click', e => { e.stopPropagation(); if (!titleReady) return; titleEl.style.opacity = 0; setTimeout(() => { titleEl.style.display = 'none'; }, 800); });
+const closeTitle = () => { titleEl.style.opacity = 0; setTimeout(() => { titleEl.style.display = 'none'; }, 800); };
+titleEl.addEventListener('click', e => { e.stopPropagation(); if (!titleReady || saved) return; closeTitle(); });
+$('bcont').addEventListener('click', e => { e.stopPropagation(); AUD.unlock(); start(saved); closeTitle(); });
+$('bnew').addEventListener('click', e => { e.stopPropagation(); AUD.unlock(); clearSave(); start(); closeTitle(); });
 $('replay').addEventListener('click', e => { e.stopPropagation(); start(); });
-start();
+if (!saved) start();
 </script>
 </body>
 </html>
