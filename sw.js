@@ -1,6 +1,6 @@
 /* Service worker: lets the game open and play with no network after the first visit.
    build_pwa.py fills in VERSION (a hash of every file) and PRECACHE. */
-const VERSION = 'a339142f58';
+const VERSION = '92500c7e2e';
 const PRECACHE = [
  "./",
  "index.html",
